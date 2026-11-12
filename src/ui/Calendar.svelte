@@ -225,7 +225,7 @@
 </script>
 
 <div
-  class="calendar-plus-wrapper"
+  class="cadence-calendar-wrapper"
   class:daily-enabled={$settings.daily.enabled}
   class:monthly-enabled={$settings.monthly.enabled}
   class:quarterly-enabled={$settings.quarterly.enabled}

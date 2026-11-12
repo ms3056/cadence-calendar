@@ -3,8 +3,8 @@
   "name": "Cadence Calendar",
   "description": "Periodic calendar with automatic daily, weekly, monthly, quarterly, and yearly note creation and custom theme styling.",
   "version": "1.0.0",
-  "author": "Custom Local Plugin",
-  "authorUrl": "",
+  "author": "Mike Stamper",
+  "authorUrl": "https://github.com/ms3056",
   "isDesktopOnly": false,
   "minAppVersion": "1.8.7"
 }

@@ -5184,7 +5184,7 @@ async function tryToCreatePeriodicNoteAndOpen(periodicity, date, ctrlPressed, se
 // backgrounds. Decoding the full image on every render (especially a month of
 // them when the sidebar opens) is expensive and memory-heavy. Instead we
 // generate a small thumbnail once, store it as a file in the plugin's folder
-// (`.obsidian/plugins/calendar-plus/thumbnail-cache/`), and render that. After
+// (`.obsidian/plugins/cadence-calendar/thumbnail-cache/`), and render that. After
 // the first generation, every render reads a tiny image — cheap on any device.
 //
 // Design notes:
@@ -9312,8 +9312,8 @@ if (typeof window !== 'undefined') {
 var root$7 = from_svg(`<svg viewBox="0 0 6 6" xmlns="http://www.w3.org/2000/svg"><circle cx="3" cy="3" r="2"></circle></svg>`);
 
 const $$css$6 = {
-	hash: 'svelte-1s030yo',
-	code: '.dot.svelte-1s030yo,\r\n  .hollow.svelte-1s030yo {display:inline-block;height:6px;width:6px;margin:0 1px;}.filled.svelte-1s030yo {fill:var(--color-dot);}.hollow.svelte-1s030yo {fill:none;stroke:var(--color-dot);}'
+	hash: 'svelte-1taai4i',
+	code: '.dot.svelte-1taai4i,\r\n  .hollow.svelte-1taai4i {display:inline-block;height:6px;width:6px;margin:0 1px;}.filled.svelte-1taai4i {fill:var(--color-dot);}.hollow.svelte-1taai4i {fill:none;stroke:var(--color-dot);}'
 };
 
 function Dot($$anchor, $$props) {
@@ -9327,14 +9327,14 @@ function Dot($$anchor, $$props) {
 		var consequent = ($$anchor) => {
 			var svg = root$7();
 
-			template_effect(() => set_class(svg, 0, `dot filled ${className()}`, 'svelte-1s030yo'));
+			template_effect(() => set_class(svg, 0, `dot filled ${className()}`, 'svelte-1taai4i'));
 			append($$anchor, svg);
 		};
 
 		var alternate = ($$anchor) => {
 			var svg_1 = root$7();
 
-			template_effect(() => set_class(svg_1, 0, `hollow ${className()}`, 'svelte-1s030yo'));
+			template_effect(() => set_class(svg_1, 0, `hollow ${className()}`, 'svelte-1taai4i'));
 			append($$anchor, svg_1);
 		};
 
@@ -9470,12 +9470,12 @@ function getMonth(displayedMonth, ..._args) {
     return month;
 }
 
-var root$6 = from_html(`<div><span class="day-number svelte-18e5v51"> </span> <div class="dot-container svelte-18e5v51"></div></div>`);
+var root$6 = from_html(`<div><span class="day-number svelte-x62535"> </span> <div class="dot-container svelte-x62535"></div></div>`);
 var root_1$4 = from_html(`<td><!></td>`);
 
 const $$css$5 = {
-	hash: 'svelte-18e5v51',
-	code: '.day.svelte-18e5v51 {background-color:var(--color-background-day);border-radius:4px;color:var(--color-text-day);cursor:pointer;font-size:0.8em;height:100%;\r\n    /* isolation: isolate creates a stacking context so ::before/::after\r\n       z-index values are resolved within .day, not the document root.\r\n       This lets z-index: 0 overlays sit above the background image but\r\n       below z-index: 1 text and dots. */isolation:isolate;padding:4px;position:relative;text-align:center;transition:background-color 0.1s ease-in, color 0.1s ease-in;vertical-align:baseline;}.day.svelte-18e5v51:hover {background-color:var(--interactive-hover);}.day.active.svelte-18e5v51:hover {background-color:var(--interactive-accent-hover);}.adjacent-month.svelte-18e5v51 {opacity:0.25;}.today.svelte-18e5v51 {color:var(--color-text-today);}.day.svelte-18e5v51:active,\r\n  .day.active.svelte-18e5v51,\r\n  .day.active.today.svelte-18e5v51 {color:var(--text-on-accent);background-color:var(--interactive-accent);}\r\n\r\n  /* The second daily note for this day is the active file. Use a neutral grey\r\n     overlay (distinct from the accent fill used for the primary daily note) so\r\n     it reads as selected without competing with the purple. Implemented as a\r\n     translucent ::after so it works the same over plain cells and feature-image\r\n     cells; sits above the cell background / image (z-index: 0) but below the\r\n     number and dots (z-index: 1). The `.active` class is suppressed on these\r\n     cells (see the markup), so the two highlights never stack. */.day.second-daily-active.svelte-18e5v51::after {content:\'\';position:absolute;inset:0;border-radius:4px;background-color:var(--text-muted);opacity:0.4;pointer-events:none;z-index:0;}\r\n\r\n  /* Today\'s number is normally accent-colored (--color-text-today); under the\r\n     grey second-daily overlay that reads as out-of-place purple, so restore\r\n     the normal day text color to match every other second-daily-active cell.\r\n     (The primary-active state has the analogous `.day.active.today` override.) */.day.second-daily-active.today.svelte-18e5v51 {color:var(--color-text-day);}\r\n\r\n  /* Featured image support ------------------------------------------------ */.day.has-background-image.svelte-18e5v51 {background-size:cover;background-position:center;overflow:hidden;}\r\n\r\n  /* Readability overlay: a dark gradient in front of the image so the date\r\n     number and dots are visible regardless of photo content. Kept heavy on\r\n     purpose — the goal is an at-a-glance "this day has an image" cue, not to\r\n     show photo detail. z-index: 0 sits above the background image but below\r\n     .day-number / .dot-container (z-index: 1 within the isolation context). */.day.has-background-image.svelte-18e5v51::before {content:\'\';position:absolute;inset:0;border-radius:4px;background:linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.35));pointer-events:none;transition:background 0.1s ease-in;z-index:0;}\r\n\r\n  /* Hover over an image cell: the base `.day:hover` background-color is hidden\r\n     behind the photo, so instead lighten the ::before overlay (the photo\r\n     appears to brighten). Keeping background-color stable (transparent) avoids\r\n     a repaint that re-composites the image on every hover — that was the\r\n     source of hover lag on image-heavy vaults. */.day.has-background-image.svelte-18e5v51:hover,\r\n  .day.has-background-image.active.svelte-18e5v51:hover {background-color:transparent;}.day.has-background-image.svelte-18e5v51:hover::before {background:linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));}\r\n\r\n  /* Active state over an image: suppress the solid accent background and\r\n     use a translucent accent overlay instead so the photo stays visible\r\n     underneath while the cell still reads as selected. */.day.has-background-image.active.svelte-18e5v51,\r\n  .day.has-background-image.active.today.svelte-18e5v51,\r\n  .day.has-background-image.svelte-18e5v51:active {background-color:transparent;}.day.has-background-image.active.svelte-18e5v51::after,\r\n  .day.has-background-image.active.today.svelte-18e5v51::after,\r\n  .day.has-background-image.svelte-18e5v51:active::after {content:\'\';position:absolute;inset:0;background-color:var(--interactive-accent);border-radius:4px;opacity:0.65;pointer-events:none;z-index:0;}\r\n\r\n  /* The number is wrapped in a span purely for z-index: it must sit above\r\n     both overlays within the isolation stacking context. No visual styling\r\n     here — color, weight, and the today/active rules all come from the\r\n     existing .day / .today / .day.active.today rules and inherit through the\r\n     span, so the number looks identical whether or not the cell has an image. */.day-number.svelte-18e5v51 {position:relative;z-index:1;}.dot-container.svelte-18e5v51 {display:flex;flex-wrap:wrap;justify-content:center;line-height:6px;min-height:6px;position:relative;z-index:1;}'
+	hash: 'svelte-x62535',
+	code: '.day.svelte-x62535 {background-color:var(--color-background-day);border-radius:4px;color:var(--color-text-day);cursor:pointer;font-size:0.8em;height:100%;\r\n    /* isolation: isolate creates a stacking context so ::before/::after\r\n       z-index values are resolved within .day, not the document root.\r\n       This lets z-index: 0 overlays sit above the background image but\r\n       below z-index: 1 text and dots. */isolation:isolate;padding:4px;position:relative;text-align:center;transition:background-color 0.1s ease-in, color 0.1s ease-in;vertical-align:baseline;}.day.svelte-x62535:hover {background-color:var(--interactive-hover);}.day.active.svelte-x62535:hover {background-color:var(--interactive-accent-hover);}.adjacent-month.svelte-x62535 {opacity:0.25;}.today.svelte-x62535 {color:var(--color-text-today);}.day.svelte-x62535:active,\r\n  .day.active.svelte-x62535,\r\n  .day.active.today.svelte-x62535 {color:var(--text-on-accent);background-color:var(--interactive-accent);}\r\n\r\n  /* The second daily note for this day is the active file. Use a neutral grey\r\n     overlay (distinct from the accent fill used for the primary daily note) so\r\n     it reads as selected without competing with the purple. Implemented as a\r\n     translucent ::after so it works the same over plain cells and feature-image\r\n     cells; sits above the cell background / image (z-index: 0) but below the\r\n     number and dots (z-index: 1). The `.active` class is suppressed on these\r\n     cells (see the markup), so the two highlights never stack. */.day.second-daily-active.svelte-x62535::after {content:\'\';position:absolute;inset:0;border-radius:4px;background-color:var(--text-muted);opacity:0.4;pointer-events:none;z-index:0;}\r\n\r\n  /* Today\'s number is normally accent-colored (--color-text-today); under the\r\n     grey second-daily overlay that reads as out-of-place purple, so restore\r\n     the normal day text color to match every other second-daily-active cell.\r\n     (The primary-active state has the analogous `.day.active.today` override.) */.day.second-daily-active.today.svelte-x62535 {color:var(--color-text-day);}\r\n\r\n  /* Featured image support ------------------------------------------------ */.day.has-background-image.svelte-x62535 {background-size:cover;background-position:center;overflow:hidden;}\r\n\r\n  /* Readability overlay: a dark gradient in front of the image so the date\r\n     number and dots are visible regardless of photo content. Kept heavy on\r\n     purpose — the goal is an at-a-glance "this day has an image" cue, not to\r\n     show photo detail. z-index: 0 sits above the background image but below\r\n     .day-number / .dot-container (z-index: 1 within the isolation context). */.day.has-background-image.svelte-x62535::before {content:\'\';position:absolute;inset:0;border-radius:4px;background:linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.35));pointer-events:none;transition:background 0.1s ease-in;z-index:0;}\r\n\r\n  /* Hover over an image cell: the base `.day:hover` background-color is hidden\r\n     behind the photo, so instead lighten the ::before overlay (the photo\r\n     appears to brighten). Keeping background-color stable (transparent) avoids\r\n     a repaint that re-composites the image on every hover — that was the\r\n     source of hover lag on image-heavy vaults. */.day.has-background-image.svelte-x62535:hover,\r\n  .day.has-background-image.active.svelte-x62535:hover {background-color:transparent;}.day.has-background-image.svelte-x62535:hover::before {background:linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));}\r\n\r\n  /* Active state over an image: suppress the solid accent background and\r\n     use a translucent accent overlay instead so the photo stays visible\r\n     underneath while the cell still reads as selected. */.day.has-background-image.active.svelte-x62535,\r\n  .day.has-background-image.active.today.svelte-x62535,\r\n  .day.has-background-image.svelte-x62535:active {background-color:transparent;}.day.has-background-image.active.svelte-x62535::after,\r\n  .day.has-background-image.active.today.svelte-x62535::after,\r\n  .day.has-background-image.svelte-x62535:active::after {content:\'\';position:absolute;inset:0;background-color:var(--interactive-accent);border-radius:4px;opacity:0.65;pointer-events:none;z-index:0;}\r\n\r\n  /* The number is wrapped in a span purely for z-index: it must sit above\r\n     both overlays within the isolation stacking context. No visual styling\r\n     here — color, weight, and the today/active rules all come from the\r\n     existing .day / .today / .day.active.today rules and inherit through the\r\n     span, so the number looks identical whether or not the cell has an image. */.day-number.svelte-x62535 {position:relative;z-index:1;}.dot-container.svelte-x62535 {display:flex;flex-wrap:wrap;justify-content:center;line-height:6px;min-height:6px;position:relative;z-index:1;}'
 };
 
 function Day($$anchor, $$props) {
@@ -9525,7 +9525,7 @@ function Day($$anchor, $$props) {
 				],
 				void 0,
 				void 0,
-				'svelte-18e5v51'
+				'svelte-x62535'
 			);
 
 			var span = child(div);
@@ -9553,11 +9553,11 @@ function Day($$anchor, $$props) {
 	pop();
 }
 
-var root$5 = from_html(`<div><svg focusable="false" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" class="svelte-1axq426"><path fill="currentColor" d="M34.52 239.03L228.87 44.69c9.37-9.37 24.57-9.37 33.94 0l22.67 22.67c9.36 9.36 9.37 24.52.04 33.9L131.49 256l154.02 154.75c9.34 9.38 9.32 24.54-.04 33.9l-22.67 22.67c-9.37 9.37-24.57 9.37-33.94 0L34.52 272.97c-9.37-9.37-9.37-24.57 0-33.94z"></path></svg></div>`);
+var root$5 = from_html(`<div><svg focusable="false" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" class="svelte-5izuqg"><path fill="currentColor" d="M34.52 239.03L228.87 44.69c9.37-9.37 24.57-9.37 33.94 0l22.67 22.67c9.36 9.36 9.37 24.52.04 33.9L131.49 256l154.02 154.75c9.34 9.38 9.32 24.54-.04 33.9l-22.67 22.67c-9.37 9.37-24.57 9.37-33.94 0L34.52 272.97c-9.37-9.37-9.37-24.57 0-33.94z"></path></svg></div>`);
 
 const $$css$4 = {
-	hash: 'svelte-1axq426',
-	code: '.arrow.svelte-1axq426 {align-items:center;cursor:pointer;display:flex;justify-content:center;width:24px;}.arrow.svelte-1axq426:hover {opacity:0.7;}.arrow.is-mobile.svelte-1axq426 {width:32px;}.right.svelte-1axq426 {transform:rotate(180deg);}.arrow.svelte-1axq426 svg:where(.svelte-1axq426) {color:var(--color-arrow);height:16px;width:16px;}'
+	hash: 'svelte-5izuqg',
+	code: '.arrow.svelte-5izuqg {align-items:center;cursor:pointer;display:flex;justify-content:center;width:24px;}.arrow.svelte-5izuqg:hover {opacity:0.7;}.arrow.is-mobile.svelte-5izuqg {width:32px;}.right.svelte-5izuqg {transform:rotate(180deg);}.arrow.svelte-5izuqg svg:where(.svelte-5izuqg) {color:var(--color-arrow);height:16px;width:16px;}'
 };
 
 function Arrow($$anchor, $$props) {
@@ -9568,7 +9568,7 @@ function Arrow($$anchor, $$props) {
 	var div = root$5();
 	let classes;
 
-	template_effect(() => classes = set_class(div, 1, 'arrow svelte-1axq426', null, classes, { 'is-mobile': isMobile, right: $$props.direction === "right" }));
+	template_effect(() => classes = set_class(div, 1, 'arrow svelte-5izuqg', null, classes, { 'is-mobile': isMobile, right: $$props.direction === "right" }));
 
 	delegated('click', div, function (...$$args) {
 		$$props.onClick?.apply(this, $$args);
@@ -9580,16 +9580,16 @@ function Arrow($$anchor, $$props) {
 
 delegate(['click']);
 
-var root$4 = from_html(`<span class="divider svelte-ujr0n6">•</span>`);
+var root$4 = from_html(`<span class="divider svelte-hunw0s">•</span>`);
 var root_1$3 = from_html(`<span> </span> <!>`, 1);
-var root_2$1 = from_html(`<div class="quarters svelte-ujr0n6"></div>`);
-var root_3$1 = from_html(`<div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svelte-ujr0n6"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg></div>`);
-var root_4$1 = from_html(`<div class="reset-button svelte-ujr0n6"> </div>`);
-var root_5$1 = from_html(`<div><div class="title-container svelte-ujr0n6"><h3 class="title svelte-ujr0n6"><span class="month svelte-ujr0n6"> </span> <span class="year svelte-ujr0n6"> </span></h3> <!></div> <div class="right-nav svelte-ujr0n6"><!> <!> <!> <!></div></div>`);
+var root_2$1 = from_html(`<div class="quarters svelte-hunw0s"></div>`);
+var root_3$1 = from_html(`<div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svelte-hunw0s"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg></div>`);
+var root_4$1 = from_html(`<div class="reset-button svelte-hunw0s"> </div>`);
+var root_5$1 = from_html(`<div><div class="title-container svelte-hunw0s"><h3 class="title svelte-hunw0s"><span class="month svelte-hunw0s"> </span> <span class="year svelte-hunw0s"> </span></h3> <!></div> <div class="right-nav svelte-hunw0s"><!> <!> <!> <!></div></div>`);
 
 const $$css$3 = {
-	hash: 'svelte-ujr0n6',
-	code: '.nav.svelte-ujr0n6 {align-items:center;display:flex;margin:0.6em 0 1em;padding:0 8px;width:100%;}.nav.is-mobile.svelte-ujr0n6 {\r\n    /* Match desktop left padding so the mobile title aligns with the grid. */padding:0 0 0 8px;}.title-container.svelte-ujr0n6 {display:flex;flex-direction:column;align-items:flex-start;}.title.svelte-ujr0n6 {color:var(--color-text-title);font-size:1.5em;margin:0;}.is-mobile.svelte-ujr0n6 .title:where(.svelte-ujr0n6) {font-size:1.3em;}.month.svelte-ujr0n6 {font-weight:500;text-transform:capitalize;cursor:pointer;}.year.svelte-ujr0n6 {color:var(--interactive-accent);cursor:pointer;}.quarters.svelte-ujr0n6 {display:flex;align-items:center;margin-top:4px;\r\n    /* 2px optical nudge to the right — sits the cluster just inside the\r\n       month title\'s left edge instead of perfectly flush, which reads\r\n       better at this font size. Not restoring the old per-item margins\r\n       or container padding (those caused the larger 6px indent). */margin-left:2px;\r\n    /* gap replaces per-item horizontal margins + the container\'s side\r\n       padding. The previous setup gave Q1 a 4px margin-left plus 2px of\r\n       container padding-left, leaving the row visually indented relative\r\n       to the month title (which has margin: 0). Using gap puts the first\r\n       child flush at the container\'s left edge while preserving the same\r\n       6px spacing between adjacent items (was 4px quarter-margin + 2px\r\n       divider-margin = 6px between each quarter and its divider). */gap:6px;}.quarter.svelte-ujr0n6 {font-size:0.6em;color:var(--text-muted);cursor:pointer;}.quarter.active.svelte-ujr0n6 {color:var(--interactive-accent);font-weight:bold;\r\n    /* Background / pill defenses against theme overrides (e.g. Minimal)\r\n       live in styles.css with a `#calendar-container` ID prefix — Svelte\'s\r\n       component-scoped specificity (0,4,0) isn\'t enough to beat a theme\r\n       targeting generic `.active` with higher specificity. */}.divider.svelte-ujr0n6 {font-size:0.4em;color:var(--text-muted);}.right-nav.svelte-ujr0n6 {display:flex;justify-content:center;align-items:center;margin-left:auto;}.reset-button.svelte-ujr0n6 {cursor:pointer;border-radius:4px;color:var(--text-muted);font-size:0.7em;font-weight:600;letter-spacing:1px;margin:0 4px;padding:0 4px;text-transform:uppercase;}.reset-button.svelte-ujr0n6:hover {opacity:0.7;}.year-overview-toggle.svelte-ujr0n6 {align-items:center;cursor:pointer;display:flex;justify-content:center;width:24px;}.year-overview-toggle.svelte-ujr0n6:hover {opacity:0.7;}.is-mobile.svelte-ujr0n6 .year-overview-toggle:where(.svelte-ujr0n6) {width:32px;}\r\n\r\n  /* Light grey when off, brightening to the normal (white-ish) text color\r\n     when the panel is open, so the icon\'s state is legible without color. */.year-overview-toggle.svelte-ujr0n6 svg:where(.svelte-ujr0n6) {color:var(--text-muted);height:15px;width:15px;}.year-overview-toggle.active.svelte-ujr0n6 svg:where(.svelte-ujr0n6) {color:var(--text-normal);}'
+	hash: 'svelte-hunw0s',
+	code: '.nav.svelte-hunw0s {align-items:center;display:flex;margin:0.6em 0 1em;padding:0 8px;width:100%;}.nav.is-mobile.svelte-hunw0s {\r\n    /* Match desktop left padding so the mobile title aligns with the grid. */padding:0 0 0 8px;}.title-container.svelte-hunw0s {display:flex;flex-direction:column;align-items:flex-start;}.title.svelte-hunw0s {color:var(--color-text-title);font-size:1.5em;margin:0;}.is-mobile.svelte-hunw0s .title:where(.svelte-hunw0s) {font-size:1.3em;}.month.svelte-hunw0s {font-weight:500;text-transform:capitalize;cursor:pointer;}.year.svelte-hunw0s {color:var(--interactive-accent);cursor:pointer;}.quarters.svelte-hunw0s {display:flex;align-items:center;margin-top:4px;\r\n    /* 2px optical nudge to the right — sits the cluster just inside the\r\n       month title\'s left edge instead of perfectly flush, which reads\r\n       better at this font size. Not restoring the old per-item margins\r\n       or container padding (those caused the larger 6px indent). */margin-left:2px;\r\n    /* gap replaces per-item horizontal margins + the container\'s side\r\n       padding. The previous setup gave Q1 a 4px margin-left plus 2px of\r\n       container padding-left, leaving the row visually indented relative\r\n       to the month title (which has margin: 0). Using gap puts the first\r\n       child flush at the container\'s left edge while preserving the same\r\n       6px spacing between adjacent items (was 4px quarter-margin + 2px\r\n       divider-margin = 6px between each quarter and its divider). */gap:6px;}.quarter.svelte-hunw0s {font-size:0.6em;color:var(--text-muted);cursor:pointer;}.quarter.active.svelte-hunw0s {color:var(--interactive-accent);font-weight:bold;\r\n    /* Background / pill defenses against theme overrides (e.g. Minimal)\r\n       live in styles.css with a `#calendar-container` ID prefix — Svelte\'s\r\n       component-scoped specificity (0,4,0) isn\'t enough to beat a theme\r\n       targeting generic `.active` with higher specificity. */}.divider.svelte-hunw0s {font-size:0.4em;color:var(--text-muted);}.right-nav.svelte-hunw0s {display:flex;justify-content:center;align-items:center;margin-left:auto;}.reset-button.svelte-hunw0s {cursor:pointer;border-radius:4px;color:var(--text-muted);font-size:0.7em;font-weight:600;letter-spacing:1px;margin:0 4px;padding:0 4px;text-transform:uppercase;}.reset-button.svelte-hunw0s:hover {opacity:0.7;}.year-overview-toggle.svelte-hunw0s {align-items:center;cursor:pointer;display:flex;justify-content:center;width:24px;}.year-overview-toggle.svelte-hunw0s:hover {opacity:0.7;}.is-mobile.svelte-hunw0s .year-overview-toggle:where(.svelte-hunw0s) {width:32px;}\r\n\r\n  /* Light grey when off, brightening to the normal (white-ish) text color\r\n     when the panel is open, so the icon\'s state is legible without color. */.year-overview-toggle.svelte-hunw0s svg:where(.svelte-hunw0s) {color:var(--text-muted);height:15px;width:15px;}.year-overview-toggle.active.svelte-hunw0s svg:where(.svelte-hunw0s) {color:var(--text-normal);}'
 };
 
 function Nav($$anchor, $$props) {
@@ -9666,7 +9666,7 @@ function Nav($$anchor, $$props) {
 				}
 
 				template_effect(() => {
-					classes_1 = set_class(span_2, 1, 'quarter svelte-ujr0n6', null, classes_1, { active: quarter === get(currentQuarter) });
+					classes_1 = set_class(span_2, 1, 'quarter svelte-hunw0s', null, classes_1, { active: quarter === get(currentQuarter) });
 					set_text(text_2, `Q${quarter ?? ''}`);
 				});
 
@@ -9689,7 +9689,7 @@ function Nav($$anchor, $$props) {
 			var div_4 = root_3$1();
 			let classes_2;
 
-			template_effect(() => classes_2 = set_class(div_4, 1, 'year-overview-toggle svelte-ujr0n6', null, classes_2, { active: yearOverviewOpen() }));
+			template_effect(() => classes_2 = set_class(div_4, 1, 'year-overview-toggle svelte-hunw0s', null, classes_2, { active: yearOverviewOpen() }));
 
 			delegated('click', div_4, (e) => {
 				e.stopPropagation();
@@ -9745,7 +9745,7 @@ function Nav($$anchor, $$props) {
 
 	template_effect(
 		($0, $1) => {
-			classes = set_class(div, 1, 'nav svelte-ujr0n6', null, classes, { 'is-mobile': isMobile });
+			classes = set_class(div, 1, 'nav svelte-hunw0s', null, classes, { 'is-mobile': isMobile });
 			set_text(text, $0);
 			set_text(text_1, $1);
 		},
@@ -9769,12 +9769,12 @@ function Nav($$anchor, $$props) {
 
 delegate(['click']);
 
-var root$3 = from_html(`<div><span class="week-num-number svelte-1ocykbr"> </span> <div class="dot-container svelte-1ocykbr"></div></div>`);
+var root$3 = from_html(`<div><span class="week-num-number svelte-18k3ixf"> </span> <div class="dot-container svelte-18k3ixf"></div></div>`);
 var root_1$2 = from_html(`<td><!></td>`);
 
 const $$css$2 = {
-	hash: 'svelte-1ocykbr',
-	code: 'td.grid-right.svelte-1ocykbr {border-right:1px solid var(--background-modifier-border);}.week-num.svelte-1ocykbr {background-color:var(--color-background-weeknum);border-radius:4px;color:var(--color-text-weeknum);cursor:pointer;font-size:0.8em;height:100%;isolation:isolate;padding:4px;position:relative;text-align:center;transition:background-color 0.1s ease-in,\r\n      color 0.1s ease-in;vertical-align:baseline;}.week-num.svelte-1ocykbr:hover {background-color:var(--interactive-hover);}.week-num.active.svelte-1ocykbr {color:var(--text-on-accent);background-color:var(--interactive-accent);}.week-num.active.svelte-1ocykbr:hover {background-color:var(--interactive-accent-hover);}\r\n\r\n  /* Featured image support ------------------------------------------------ */.week-num.has-background-image.svelte-1ocykbr {background-size:cover;background-position:center;overflow:hidden;}.week-num.has-background-image.svelte-1ocykbr::before {content:\'\';position:absolute;inset:0;border-radius:4px;background:linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.35));pointer-events:none;transition:background 0.1s ease-in;z-index:0;}\r\n\r\n  /* Hover over an image cell: lighten the ::before overlay (photo appears to\r\n     brighten) and keep background-color stable to avoid re-compositing the\r\n     image on hover. Mirrors Day.svelte. */.week-num.has-background-image.svelte-1ocykbr:hover,\r\n  .week-num.has-background-image.active.svelte-1ocykbr:hover {background-color:transparent;}.week-num.has-background-image.svelte-1ocykbr:hover::before {background:linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));}.week-num.has-background-image.active.svelte-1ocykbr {background-color:transparent;}.week-num.has-background-image.active.svelte-1ocykbr::after {content:\'\';position:absolute;inset:0;background-color:var(--interactive-accent);border-radius:4px;opacity:0.65;pointer-events:none;z-index:0;}\r\n\r\n  /* Wrapped purely for z-index (sits above the overlays). No visual styling\r\n     here — the number looks identical whether or not the cell has an image. */.week-num-number.svelte-1ocykbr {position:relative;z-index:1;}\r\n\r\n  /* Reserve consistent space so week numbers don\'t shift vertically when a\r\n     weekly-note dot appears or disappears. */.dot-container.svelte-1ocykbr {display:flex;flex-wrap:wrap;justify-content:center;min-height:6px;position:relative;z-index:1;}'
+	hash: 'svelte-18k3ixf',
+	code: 'td.grid-right.svelte-18k3ixf {border-right:1px solid var(--background-modifier-border);}.week-num.svelte-18k3ixf {background-color:var(--color-background-weeknum);border-radius:4px;color:var(--color-text-weeknum);cursor:pointer;font-size:0.8em;height:100%;isolation:isolate;padding:4px;position:relative;text-align:center;transition:background-color 0.1s ease-in,\r\n      color 0.1s ease-in;vertical-align:baseline;}.week-num.svelte-18k3ixf:hover {background-color:var(--interactive-hover);}.week-num.active.svelte-18k3ixf {color:var(--text-on-accent);background-color:var(--interactive-accent);}.week-num.active.svelte-18k3ixf:hover {background-color:var(--interactive-accent-hover);}\r\n\r\n  /* Featured image support ------------------------------------------------ */.week-num.has-background-image.svelte-18k3ixf {background-size:cover;background-position:center;overflow:hidden;}.week-num.has-background-image.svelte-18k3ixf::before {content:\'\';position:absolute;inset:0;border-radius:4px;background:linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.35));pointer-events:none;transition:background 0.1s ease-in;z-index:0;}\r\n\r\n  /* Hover over an image cell: lighten the ::before overlay (photo appears to\r\n     brighten) and keep background-color stable to avoid re-compositing the\r\n     image on hover. Mirrors Day.svelte. */.week-num.has-background-image.svelte-18k3ixf:hover,\r\n  .week-num.has-background-image.active.svelte-18k3ixf:hover {background-color:transparent;}.week-num.has-background-image.svelte-18k3ixf:hover::before {background:linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));}.week-num.has-background-image.active.svelte-18k3ixf {background-color:transparent;}.week-num.has-background-image.active.svelte-18k3ixf::after {content:\'\';position:absolute;inset:0;background-color:var(--interactive-accent);border-radius:4px;opacity:0.65;pointer-events:none;z-index:0;}\r\n\r\n  /* Wrapped purely for z-index (sits above the overlays). No visual styling\r\n     here — the number looks identical whether or not the cell has an image. */.week-num-number.svelte-18k3ixf {position:relative;z-index:1;}\r\n\r\n  /* Reserve consistent space so week numbers don\'t shift vertically when a\r\n     weekly-note dot appears or disappears. */.dot-container.svelte-18k3ixf {display:flex;flex-wrap:wrap;justify-content:center;min-height:6px;position:relative;z-index:1;}'
 };
 
 function WeekNum($$anchor, $$props) {
@@ -9806,7 +9806,7 @@ function WeekNum($$anchor, $$props) {
 
 			template_effect(
 				($0, $1) => {
-					classes_1 = set_class(div, 1, $0, 'svelte-1ocykbr', classes_1, $1);
+					classes_1 = set_class(div, 1, $0, 'svelte-18k3ixf', classes_1, $1);
 
 					set_style(div, metadata().backgroundImage
 						? `background-image: url("${metadata().backgroundImage}")`
@@ -9846,19 +9846,19 @@ function WeekNum($$anchor, $$props) {
 			$$slots: { default: true }
 		});
 	}
-	template_effect(() => classes = set_class(td, 1, 'svelte-1ocykbr', null, classes, { 'grid-right': $$props.gridRight }));
+	template_effect(() => classes = set_class(td, 1, 'svelte-18k3ixf', null, classes, { 'grid-right': $$props.gridRight }));
 	append($$anchor, td);
 	pop();
 }
 
 delegate(['click', 'contextmenu', 'pointerover']);
 
-var root$2 = from_html(`<div><span class="month-label svelte-eaveuk"> </span> <div class="dot-container svelte-eaveuk"><!></div></div>`);
-var root_1$1 = from_html(`<div class="year-overview svelte-eaveuk"><div class="year-nav svelte-eaveuk"><!> <span class="year-label svelte-eaveuk"> </span> <!></div> <div class="months svelte-eaveuk"></div></div>`);
+var root$2 = from_html(`<div><span class="month-label svelte-1jpeose"> </span> <div class="dot-container svelte-1jpeose"><!></div></div>`);
+var root_1$1 = from_html(`<div class="year-overview svelte-1jpeose"><div class="year-nav svelte-1jpeose"><!> <span class="year-label svelte-1jpeose"> </span> <!></div> <div class="months svelte-1jpeose"></div></div>`);
 
 const $$css$1 = {
-	hash: 'svelte-eaveuk',
-	code: '\r\n  /* Rendered inside the year-overview popup card, which supplies the frame\r\n     and padding — so no border/margin here. */.year-overview.svelte-eaveuk {user-select:none;}.year-nav.svelte-eaveuk {align-items:center;display:flex;justify-content:center;gap:6px;margin-bottom:8px;}.year-label.svelte-eaveuk {color:var(--color-text-title);font-size:0.95em;font-weight:600;font-variant-numeric:tabular-nums;min-width:3em;text-align:center;}.months.svelte-eaveuk {display:grid;grid-template-columns:repeat(4, 1fr);gap:3px;}\r\n\r\n  /* Mirror .day styling (compact) so month cells feel like day cells. */.month-cell.svelte-eaveuk {align-items:center;background-color:var(--color-background-day);border-radius:4px;color:var(--color-text-day);cursor:pointer;display:flex;flex-direction:column;justify-content:center;padding:5px 4px 3px;text-align:center;transition:background-color 0.1s ease-in, color 0.1s ease-in;}.month-cell.svelte-eaveuk:hover {background-color:var(--interactive-hover);}.month-cell.today.svelte-eaveuk {color:var(--color-text-today);}.month-cell.active.svelte-eaveuk {color:var(--text-on-accent);background-color:var(--interactive-accent);}.month-cell.active.svelte-eaveuk:hover {background-color:var(--interactive-accent-hover);}.month-label.svelte-eaveuk {font-size:0.8em;text-transform:capitalize;}\r\n\r\n  /* Reserve space so the row height doesn\'t shift when a dot appears. */.dot-container.svelte-eaveuk {display:flex;flex-wrap:wrap;justify-content:center;line-height:6px;min-height:6px;margin-top:2px;}'
+	hash: 'svelte-1jpeose',
+	code: '\r\n  /* Rendered inside the year-overview popup card, which supplies the frame\r\n     and padding — so no border/margin here. */.year-overview.svelte-1jpeose {user-select:none;}.year-nav.svelte-1jpeose {align-items:center;display:flex;justify-content:center;gap:6px;margin-bottom:8px;}.year-label.svelte-1jpeose {color:var(--color-text-title);font-size:0.95em;font-weight:600;font-variant-numeric:tabular-nums;min-width:3em;text-align:center;}.months.svelte-1jpeose {display:grid;grid-template-columns:repeat(4, 1fr);gap:3px;}\r\n\r\n  /* Mirror .day styling (compact) so month cells feel like day cells. */.month-cell.svelte-1jpeose {align-items:center;background-color:var(--color-background-day);border-radius:4px;color:var(--color-text-day);cursor:pointer;display:flex;flex-direction:column;justify-content:center;padding:5px 4px 3px;text-align:center;transition:background-color 0.1s ease-in, color 0.1s ease-in;}.month-cell.svelte-1jpeose:hover {background-color:var(--interactive-hover);}.month-cell.today.svelte-1jpeose {color:var(--color-text-today);}.month-cell.active.svelte-1jpeose {color:var(--text-on-accent);background-color:var(--interactive-accent);}.month-cell.active.svelte-1jpeose:hover {background-color:var(--interactive-accent-hover);}.month-label.svelte-1jpeose {font-size:0.8em;text-transform:capitalize;}\r\n\r\n  /* Reserve space so the row height doesn\'t shift when a dot appears. */.dot-container.svelte-1jpeose {display:flex;flex-wrap:wrap;justify-content:center;line-height:6px;min-height:6px;margin-top:2px;}'
 };
 
 function YearGrid($$anchor, $$props) {
@@ -9920,7 +9920,7 @@ function YearGrid($$anchor, $$props) {
 
 		template_effect(
 			($0) => {
-				classes = set_class(div_3, 1, 'month-cell svelte-eaveuk', null, classes, $0);
+				classes = set_class(div_3, 1, 'month-cell svelte-1jpeose', null, classes, $0);
 				set_text(text_1, get(label));
 			},
 			[
@@ -9970,16 +9970,16 @@ function getWeeklyMetadata(sources, date, ..._args) {
     return metadataReducer(sources.map((source) => { var _a, _b; return (_b = (_a = source.getWeeklyMetadata) === null || _a === void 0 ? void 0 : _a.call(source, date)) !== null && _b !== void 0 ? _b : Promise.resolve({}); }));
 }
 
-var root$1 = from_html(`<div class="year-popup svelte-ej4bqt"><!></div>`);
+var root$1 = from_html(`<div class="year-popup svelte-1cv5gx"><!></div>`);
 var root_1 = from_html(`<col/>`);
-var root_2 = from_html(`<th class="week-num-heading svelte-ej4bqt">W</th>`);
+var root_2 = from_html(`<th class="week-num-heading svelte-1cv5gx">W</th>`);
 var root_3 = from_html(`<th> </th>`);
 var root_4 = from_html(`<tr><!><!><!></tr>`);
-var root_5 = from_html(`<div id="calendar-container"><!> <!> <table class="calendar svelte-ej4bqt"><colgroup><!><!></colgroup><thead><tr><!><!><!></tr></thead><tbody></tbody></table></div>`);
+var root_5 = from_html(`<div id="calendar-container"><!> <!> <table class="calendar svelte-1cv5gx"><colgroup><!><!></colgroup><thead><tr><!><!><!></tr></thead><tbody></tbody></table></div>`);
 
 const $$css = {
-	hash: 'svelte-ej4bqt',
-	code: '.container.svelte-ej4bqt {--color-background-heading: transparent;--color-background-day: transparent;--color-background-weeknum: transparent;--color-background-weekend: var(--color-base-25);--color-dot: var(--text-muted);--color-arrow: var(--text-muted);--color-button: var(--text-muted);--color-text-title: var(--text-normal);--color-text-heading: var(--text-muted);--color-text-day: var(--text-normal);--color-text-today: var(--interactive-accent);--color-text-weeknum: var(--text-muted);}.container.svelte-ej4bqt {padding:0 8px;\r\n    /* Anchor the absolutely-positioned year-overview popup. */position:relative;user-select:none;}.container.is-mobile.svelte-ej4bqt {padding:0;}\r\n\r\n  /* Year-overview popup: floats over the calendar, anchored under the\r\n     header history button. Click-away closes it (handled in script). */.year-popup.svelte-ej4bqt {position:absolute;top:42px;right:8px;z-index:20;width:220px;max-width:calc(100% - 16px);padding:8px 10px 10px;background-color:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:8px;box-shadow:var(--shadow-s);}.container.is-mobile.svelte-ej4bqt .year-popup:where(.svelte-ej4bqt) {right:0;}th.svelte-ej4bqt {text-align:center;}.calendar.svelte-ej4bqt {border-collapse:collapse;table-layout:fixed;width:100%;}.week-num-heading.svelte-ej4bqt {width:10%;}th.svelte-ej4bqt {background-color:var(--color-background-heading);color:var(--color-text-heading);font-size:0.6em;letter-spacing:1px;padding:4px;text-transform:uppercase;}'
+	hash: 'svelte-1cv5gx',
+	code: '.container.svelte-1cv5gx {--color-background-heading: transparent;--color-background-day: transparent;--color-background-weeknum: transparent;--color-background-weekend: var(--color-base-25);--color-dot: var(--text-muted);--color-arrow: var(--text-muted);--color-button: var(--text-muted);--color-text-title: var(--text-normal);--color-text-heading: var(--text-muted);--color-text-day: var(--text-normal);--color-text-today: var(--interactive-accent);--color-text-weeknum: var(--text-muted);}.container.svelte-1cv5gx {padding:0 8px;\r\n    /* Anchor the absolutely-positioned year-overview popup. */position:relative;user-select:none;}.container.is-mobile.svelte-1cv5gx {padding:0;}\r\n\r\n  /* Year-overview popup: floats over the calendar, anchored under the\r\n     header history button. Click-away closes it (handled in script). */.year-popup.svelte-1cv5gx {position:absolute;top:42px;right:8px;z-index:20;width:220px;max-width:calc(100% - 16px);padding:8px 10px 10px;background-color:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:8px;box-shadow:var(--shadow-s);}.container.is-mobile.svelte-1cv5gx .year-popup:where(.svelte-1cv5gx) {right:0;}th.svelte-1cv5gx {text-align:center;}.calendar.svelte-1cv5gx {border-collapse:collapse;table-layout:fixed;width:100%;}.week-num-heading.svelte-1cv5gx {width:10%;}th.svelte-1cv5gx {background-color:var(--color-background-heading);color:var(--color-text-heading);font-size:0.6em;letter-spacing:1px;padding:4px;text-transform:uppercase;}'
 };
 
 function Calendar$1($$anchor, $$props) {
@@ -10198,7 +10198,7 @@ function Calendar$1($$anchor, $$props) {
 
 		template_effect(
 			($0) => {
-				classes_1 = set_class(th_1, 1, 'svelte-ej4bqt', null, classes_1, $0);
+				classes_1 = set_class(th_1, 1, 'svelte-1cv5gx', null, classes_1, $0);
 				set_text(text, get(dayOfWeek));
 			},
 			[
@@ -10360,7 +10360,7 @@ function Calendar$1($$anchor, $$props) {
 		}
 		append($$anchor, tr_1);
 	});
-	template_effect(() => classes = set_class(div, 1, 'container svelte-ej4bqt', null, classes, { 'is-mobile': isMobile }));
+	template_effect(() => classes = set_class(div, 1, 'container svelte-1cv5gx', null, classes, { 'is-mobile': isMobile }));
 	append($$anchor, div);
 
 	return pop($$exports);
@@ -10732,7 +10732,7 @@ function Calendar($$anchor, $$props) {
 		}
 	});
 
-	template_effect(() => classes = set_class(div, 1, 'calendar-plus-wrapper', null, classes, {
+	template_effect(() => classes = set_class(div, 1, 'cadence-calendar-wrapper', null, classes, {
 		'daily-enabled': $settings().daily.enabled,
 		'monthly-enabled': $settings().monthly.enabled,
 		'quarterly-enabled': $settings().quarterly.enabled,
@@ -11177,7 +11177,7 @@ class CalendarView extends obsidian.ItemView {
                 else if (daily.enabled && !primaryNote) {
                     menu.addItem((item) => item
                         .setTitle("Create daily note")
-                        .setIcon("calendar-plus")
+                        .setIcon("calendar-days")
                         // calendar-daily (not calendar-actions) so the primary-note item
                         // is always its own section, giving a consistent divider above the
                         // second-daily items whether or not the primary note exists.
@@ -11584,7 +11584,7 @@ class CalendarView extends obsidian.ItemView {
         return "Cadence Calendar";
     }
     getIcon() {
-        return "calendar-plus";
+        return "calendar-days";
     }
     onClose() {
         var _a;
@@ -11597,7 +11597,7 @@ class CalendarView extends obsidian.ItemView {
         return Promise.resolve();
     }
     async onOpen() {
-        // Integration point: external plugins can listen for `calendar-plus:open`
+        // Integration point: external plugins can listen for `cadence-calendar:open`
         // (TRIGGER_ON_OPEN) to feed in additional sources. wordCountSource and
         // tasksSource self-gate on `dotMode === "word-count-tasks"`, so they have
         // zero cost in the default "exists" mode.
@@ -11837,7 +11837,7 @@ class CalendarPlugin extends obsidian.Plugin {
         // mounts with the user's real folders/formats rather than defaultSettings.
         await this.loadOptions();
         this.registerView(VIEW_TYPE_CALENDAR, (leaf) => new CalendarView(leaf, this));
-        this.addRibbonIcon("calendar-plus", "Open Cadence Calendar", () => {
+        this.addRibbonIcon("calendar-days", "Open Cadence Calendar", () => {
             const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR);
             if (leaves.length) {
                 void this.app.workspace.revealLeaf(leaves[0]);

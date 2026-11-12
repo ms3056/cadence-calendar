@@ -1,13 +1,13 @@
 # Contributing
 
-Thanks for your interest in Calendar Plus. Bug reports, feature requests, and focused pull requests are welcome.
+Thanks for your interest in Cadence Calendar. Bug reports, feature requests, and focused pull requests are welcome.
 
 ## Reporting bugs
 
 Please open a GitHub issue and include as much of the following as you can:
 
 - Obsidian version
-- Calendar Plus version
+- Cadence Calendar version
 - operating system
 - theme and CSS snippets, especially for visual issues
 - steps to reproduce the issue
@@ -17,7 +17,7 @@ Please open a GitHub issue and include as much of the following as you can:
 
 ## Feature requests
 
-Feature requests are welcome. Please describe the use case, not just the proposed solution. Calendar Plus aims to stay focused, lightweight, and close to Obsidian's native plugin conventions.
+Feature requests are welcome. Please describe the use case, not just the proposed solution. Cadence Calendar aims to stay focused, lightweight, and close to Obsidian's native plugin conventions.
 
 ## Pull requests
 
@@ -33,4 +33,4 @@ Before opening a pull request:
 - Preserve existing note-opening behavior unless the change has been discussed
 - Follow existing patterns for settings, defaults, and persisted options
 
-Calendar Plus is intentionally conservative about styling and behavior so it remains reliable across Obsidian themes and plugin review checks.
+Cadence Calendar is intentionally conservative about styling and behavior so it remains reliable across Obsidian themes and plugin review checks.

@@ -8,7 +8,7 @@ import { debounce } from "obsidian";
 // backgrounds. Decoding the full image on every render (especially a month of
 // them when the sidebar opens) is expensive and memory-heavy. Instead we
 // generate a small thumbnail once, store it as a file in the plugin's folder
-// (`.obsidian/plugins/calendar-plus/thumbnail-cache/`), and render that. After
+// (`.obsidian/plugins/cadence-calendar/thumbnail-cache/`), and render that. After
 // the first generation, every render reads a tiny image — cheap on any device.
 //
 // Design notes:

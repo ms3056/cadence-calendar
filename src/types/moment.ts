@@ -8,7 +8,7 @@ import { moment as obsidianMoment } from "obsidian";
 // `moment` package directly (`no-restricted-imports`), and deriving the types
 // from the exported value (`ReturnType<typeof moment>`) collapses `Moment` to
 // `any` and reintroduces ~60 `no-unsafe-*` warnings. So this module hand-rolls
-// the slice of moment's API Calendar Plus actually uses, giving the source
+// the slice of moment's API Cadence Calendar actually uses, giving the source
 // tree zero `"moment"` imports while keeping precise types.
 //
 // MAINTENANCE: this is a hand-written mirror of part of moment's surface.
@@ -22,7 +22,7 @@ import { moment as obsidianMoment } from "obsidian";
 
 /**
  * Duration-unit strings accepted by `add` / `subtract` / `startOf` / `isSame`.
- * A stable subset of moment's unit union covering the units Calendar Plus
+ * A stable subset of moment's unit union covering the units Cadence Calendar
  * uses (long names, plurals, and single-letter shortcuts).
  */
 export type DurationUnit =
@@ -34,7 +34,7 @@ export type DurationUnit =
 
 /**
  * Opaque locale object (the result of `moment.localeData()` / a Moment's
- * `.localeData()`). Calendar Plus never calls methods on it directly — it is
+ * `.localeData()`). Cadence Calendar never calls methods on it directly — it is
  * spread into a plain object and passed through, or cast to
  * `LocaleDataWithWeek` (src/types/obsidian-internal.ts) for the private
  * `_week` access — so a structural record is sufficient.
@@ -42,7 +42,7 @@ export type DurationUnit =
 export type Locale = Record<string, unknown>;
 
 /**
- * The Moment instance surface Calendar Plus calls. Getter/setter accessors
+ * The Moment instance surface Cadence Calendar calls. Getter/setter accessors
  * use overloads: no argument reads (returns a number), a number argument sets
  * (returns a new Moment for chaining).
  */
@@ -87,7 +87,7 @@ export interface WeekSpec {
 
 /**
  * Call signature + static-method shape of moment's factory, narrowed to what
- * Calendar Plus actually uses.
+ * Cadence Calendar actually uses.
  */
 export interface MomentFactory {
   // Call signatures (factory invocations).
@@ -98,7 +98,7 @@ export interface MomentFactory {
   // date UID without timezone shifting).
   parseZone(input: string): Moment;
 
-  // Static members Calendar Plus calls.
+  // Static members Cadence Calendar calls.
   locale(): string;
   locale(loc: string): string;
   locales(): string[];

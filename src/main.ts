@@ -133,7 +133,7 @@ export default class CalendarPlugin extends Plugin {
       (leaf: WorkspaceLeaf) => new CalendarView(leaf, this)
     );
 
-    this.addRibbonIcon("calendar-plus", "Open Cadence Calendar", () => {
+    this.addRibbonIcon("calendar-days", "Open Cadence Calendar", () => {
       const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR);
       if (leaves.length) {
         void this.app.workspace.revealLeaf(leaves[0]);

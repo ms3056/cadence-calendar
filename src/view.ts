@@ -101,7 +101,7 @@ export default class CalendarView extends ItemView {
   }
 
   getIcon(): string {
-    return "calendar-plus";
+    return "calendar-days";
   }
 
   onClose(): Promise<void> {
@@ -115,7 +115,7 @@ export default class CalendarView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    // Integration point: external plugins can listen for `calendar-plus:open`
+    // Integration point: external plugins can listen for `cadence-calendar:open`
     // (TRIGGER_ON_OPEN) to feed in additional sources. wordCountSource and
     // tasksSource self-gate on `dotMode === "word-count-tasks"`, so they have
     // zero cost in the default "exists" mode.
@@ -299,7 +299,7 @@ export default class CalendarView extends ItemView {
         menu.addItem((item) =>
           item
             .setTitle("Create daily note")
-            .setIcon("calendar-plus")
+            .setIcon("calendar-days")
             // calendar-daily (not calendar-actions) so the primary-note item
             // is always its own section, giving a consistent divider above the
             // second-daily items whether or not the primary note exists.

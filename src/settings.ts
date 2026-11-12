@@ -94,7 +94,7 @@ export interface ISettings {
   /**
    * What the dots on day and week cells represent.
    *  - `"exists"` (default): one filled dot when the corresponding periodic
-   *    note exists. Current Calendar Plus behavior.
+   *    note exists. Current Cadence Calendar behavior.
    *  - `"word-count-tasks"`: filled dots based on the note's word count
    *    (1 dot per `wordsPerDot` words, max 5) plus one hollow task dot when
    *    the note has any open `- [ ]` / `* [ ]` checkboxes.
@@ -458,7 +458,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
           slider.setValue(wc[key]);
           slider.setDynamicTooltip();
           slider.onChange(async (value) => {
-            await save({ [key]: value } as Partial<WeekendColorSettings>);
+            await save({ [key]: value });
           });
         })
         .addExtraButton((btn) =>
@@ -468,7 +468,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
             .onClick(async () => {
               await save({
                 [key]: DEFAULT_WEEKEND_COLOR[key],
-              } as Partial<WeekendColorSettings>);
+              });
               this.renderWeekendSection(sectionEl);
             })
         );
