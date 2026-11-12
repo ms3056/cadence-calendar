@@ -1,0 +1,176 @@
+/* When daily notes disabled: no pointer cursor or hover background on day
+   cells. The :not(.active) exception preserves the purple resting background
+   on the active-file cell (which can persist after toggling daily off, since
+   the active-file UID isn't recomputed on settings change). */
+.calendar-plus-wrapper:not(.daily-enabled) #calendar-container .day {
+  cursor: default;
+}
+.calendar-plus-wrapper:not(.daily-enabled) #calendar-container .day:not(.active):hover {
+  background-color: var(--color-background-day);
+}
+
+/* When daily notes disabled: also suppress the :active press background +
+   text color so day cells don't flash purple on click-and-hold. The vendored
+   Day.svelte :active rule sets both background-color and color, so we
+   override both. Same .active exception as above. */
+.calendar-plus-wrapper:not(.daily-enabled) #calendar-container .day:not(.active):active {
+  background-color: var(--color-background-day);
+  color: var(--color-text-day);
+}
+
+/* Re-apply .today's purple text color on press for non-active today cells,
+   so the press color override above doesn't flicker today's text to default. */
+.calendar-plus-wrapper:not(.daily-enabled) #calendar-container .day.today:not(.active):active {
+  color: var(--color-text-today);
+}
+
+/* Suppress cursor:pointer from the vendored calendar UI for disabled note types */
+.calendar-plus-wrapper #calendar-container .month,
+.calendar-plus-wrapper #calendar-container .year,
+.calendar-plus-wrapper #calendar-container .quarter {
+  cursor: default;
+}
+
+/* Restore pointer + subtle hover when each note type is enabled */
+.calendar-plus-wrapper.monthly-enabled #calendar-container .month {
+  cursor: pointer;
+}
+.calendar-plus-wrapper.monthly-enabled #calendar-container .month:hover {
+  opacity: 0.7;
+}
+
+.calendar-plus-wrapper.yearly-enabled #calendar-container .year {
+  cursor: pointer;
+}
+.calendar-plus-wrapper.yearly-enabled #calendar-container .year:hover {
+  opacity: 0.7;
+}
+
+.calendar-plus-wrapper.quarterly-enabled #calendar-container .quarter {
+  cursor: pointer;
+}
+.calendar-plus-wrapper.quarterly-enabled #calendar-container .quarter:hover {
+  opacity: 0.7;
+}
+
+/* Current-quarter label is a navigation highlight, not a button. Keep it
+   accent text only — strip any background, gradient, pill, or shadow a
+   theme paints behind the `.active` state. */
+.calendar-plus-wrapper #calendar-container .quarter.active {
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* Weekend column shading on header (th) and body (td) cells. Gated by
+   `.weekend-shading-enabled` so the "Shade weekend columns" setting can
+   turn the tint off. Color is set in Settings → Cadence Calendar → Weekend;
+   main.ts writes the values as inline CSS variables on <body>, which
+   override these fallback defaults. Defaults reproduce the original accent
+   tint exactly (saturation x1, brightness x1, opacity 0.05). */
+body {
+  --cc-weekend-saturation: 1;
+  --cc-weekend-brightness: 1;
+  --cc-weekend-opacity: 0.05;
+  --cc-weekend-custom-color: #7c3aed;
+  --cc-weekend-bg: hsl(
+    var(--accent-h)
+    min(100%, calc(var(--accent-s) * var(--cc-weekend-saturation)))
+    min(100%, calc(var(--accent-l) * var(--cc-weekend-brightness)))
+    / var(--cc-weekend-opacity)
+  );
+}
+
+/* Custom color: same saturation / brightness / opacity sliders, applied to
+   the picked color via CSS relative color syntax. Saturation and lightness
+   are capped at 100 — uncapped values above 100% make the HSL conversion
+   invert the hue (e.g. blue turns brown/orange at max slider settings). */
+body.cc-weekend-use-custom-color {
+  --cc-weekend-bg: hsl(
+    from var(--cc-weekend-custom-color)
+    h
+    min(100, calc(s * var(--cc-weekend-saturation)))
+    min(100, calc(l * var(--cc-weekend-brightness)))
+    / var(--cc-weekend-opacity)
+  );
+}
+
+.calendar-plus-wrapper.weekend-shading-enabled #calendar-container th.weekend,
+.calendar-plus-wrapper.weekend-shading-enabled #calendar-container td.weekend {
+  border-radius: 0 !important;
+  /* !important: CSS snippets load after plugin styles, so a leftover snippet
+     with the same selector would otherwise override the plugin's color. */
+  background-color: var(--cc-weekend-bg) !important;
+}
+
+/* Second daily note dot rendered at half opacity to visually distinguish
+   it from the primary daily note dot without introducing a new color. */
+.calendar-plus-wrapper #calendar-container .dot.filled.second-daily {
+  opacity: 0.5;
+}
+
+/* Custom Cadence Calendar theme styling (baked in from calendar-plus-weekend-fix.css) */
+.calendar-plus-wrapper #calendar-container .year {
+  color: var(--text-accent);
+}
+
+.calendar-plus-wrapper #calendar-container thead th:not(.week-num-heading) {
+  color: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.8);
+}
+
+.calendar-plus-wrapper #calendar-container th.week-num-heading {
+  color: var(--text-faint); /* dim the W, keep weekdays colored */
+}
+
+/* TODAY indicator — rectangle (background/border/radius) */
+.calendar-plus-wrapper #calendar-container .day.today,
+.calendar-plus-wrapper #calendar-container .day.today:hover {
+  background-color: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.18);
+  border: 1px solid hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.45);
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.15);
+}
+
+/* Keep today's number the same color as other dates. */
+.calendar-plus-wrapper #calendar-container .day.today .day-number {
+  color: var(--color-text-day, var(--text-normal));
+  font-weight: 600;
+  font-size: large;
+}
+
+/* A selected non-today date stays visually plain; only its note dot is accented. */
+.calendar-plus-wrapper #calendar-container .day.active:not(.today),
+.calendar-plus-wrapper #calendar-container .day.active:not(.today):hover {
+  background-color: transparent !important;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--color-text-day, var(--text-normal)) !important;
+}
+
+.calendar-plus-wrapper #calendar-container .day.active .dot.filled {
+  fill: var(--text-accent) !important;
+}
+
+/* Give day/week cells a little extra top breathing room so a top-centered
+   emoji badge sits cleanly above the date number without touching it. */
+.calendar-plus-wrapper #calendar-container .day,
+.calendar-plus-wrapper #calendar-container .week-num {
+  padding-top: 8px;
+}
+
+/* Render frontmatter emoji tags (e.g. tags: [⭐] or tags: [✈️]) centered above the day number */
+.calendar-plus-wrapper #calendar-container .day[data-emoji-tag]::after,
+.calendar-plus-wrapper #calendar-container .week-num[data-emoji-tag]::after {
+  content: attr(data-emoji-tag);
+  position: absolute;
+  top: 1px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  font-size: 0.62em;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+}
+
