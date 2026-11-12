@@ -50,4 +50,4 @@ npm run build   # lint and bundle to main.js (rollup)
 
 - [Liam Cain](https://github.com/liamcain) — original Obsidian Calendar plugin
 - [Matt Maiorana](https://github.com/mattmaiorana) — Calendar Plus, the fork Cadence Calendar is based on
-- Mike Stamper — Cadence Calendar rebrand and modifications
+- HiroMike — Cadence Calendar rebrand and modifications
