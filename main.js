@@ -11837,6 +11837,67 @@ class CalendarPlugin extends obsidian.Plugin {
         // mounts with the user's real folders/formats rather than defaultSettings.
         await this.loadOptions();
         this.registerView(VIEW_TYPE_CALENDAR, (leaf) => new CalendarView(leaf, this));
+        // Watch vault mutations at the PLUGIN level (not only inside the calendar
+        // view). The old design registered these in CalendarView's constructor, so
+        // notes created automatically (midnight rollover, daily-note-automater,
+        // core Daily Notes, sync) could be missed when no calendar leaf was open,
+        // or dropped by the view's `layoutReady` guard — leaving the day's dot
+        // missing until a reload reindexed everything. Store updates are cheap and
+        // idempotent (keyed by date UID); the Svelte wrapper re-renders cells via
+        // `storeRevision`, and `refreshAllCalendarViews` ticks any open views.
+        this.registerEvent(this.app.vault.on("create", (file) => {
+            if (!(file instanceof obsidian.TFile))
+                return;
+            const changed = [
+                dailyNotes.addFile(file),
+                weeklyNotes.addFile(file),
+                monthlyNotes.addFile(file),
+                quarterlyNotes.addFile(file),
+                yearlyNotes.addFile(file),
+                secondDailyNotes.addFile(file),
+            ].some(Boolean);
+            if (changed) {
+                this.refreshAllCalendarViews();
+            }
+        }));
+        this.registerEvent(this.app.vault.on("delete", (file) => {
+            if (!(file instanceof obsidian.TFile))
+                return;
+            const changed = [
+                dailyNotes.removeFile(file),
+                weeklyNotes.removeFile(file),
+                monthlyNotes.removeFile(file),
+                quarterlyNotes.removeFile(file),
+                yearlyNotes.removeFile(file),
+                secondDailyNotes.removeFile(file),
+            ].some(Boolean);
+            if (changed) {
+                this.refreshAllCalendarViews();
+            }
+        }));
+        this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
+            if (!(file instanceof obsidian.TFile))
+                return;
+            const removed = [
+                dailyNotes.removeByOldPath(oldPath, file),
+                weeklyNotes.removeByOldPath(oldPath, file),
+                monthlyNotes.removeByOldPath(oldPath, file),
+                quarterlyNotes.removeByOldPath(oldPath, file),
+                yearlyNotes.removeByOldPath(oldPath, file),
+                secondDailyNotes.removeByOldPath(oldPath, file),
+            ].some(Boolean);
+            const added = [
+                dailyNotes.addFile(file),
+                weeklyNotes.addFile(file),
+                monthlyNotes.addFile(file),
+                quarterlyNotes.addFile(file),
+                yearlyNotes.addFile(file),
+                secondDailyNotes.addFile(file),
+            ].some(Boolean);
+            if (removed || added) {
+                this.refreshAllCalendarViews();
+            }
+        }));
         this.addRibbonIcon("calendar-days", "Open Cadence Calendar", () => {
             const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR);
             if (leaves.length) {
@@ -11889,6 +11950,17 @@ class CalendarPlugin extends obsidian.Plugin {
             this.reindexAllStores();
             await this.ensureAutoCreatedNotes();
             this.refreshAllCalendarViews();
+            // Catch-up reindex: another plugin (core Daily Notes, daily-note-automater,
+            // sync) can create a note in the first seconds after layout-ready, after
+            // the subscription above started but outside any single create tick we
+            // could reliably attribute. One deferred, idempotent full rescan closes
+            // every startup race without a timer loop.
+            window.setTimeout(() => {
+                if (this.app.workspace.layoutReady) {
+                    this.reindexAllStores();
+                    this.refreshAllCalendarViews();
+                }
+            }, 8000);
         });
         // Check once a minute so period rollovers (midnight, new week/month/quarter/year)
         // automatically create the new note when autoCreate is enabled.
