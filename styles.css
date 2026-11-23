@@ -123,20 +123,39 @@ body.cc-weekend-use-custom-color {
   color: var(--text-faint); /* dim the W, keep weekdays colored */
 }
 
-/* TODAY indicator — rectangle (background/border/radius) */
+/* TODAY indicator — snug inner box around the number + dot. The outer .day
+   and td keep their full size and click area, so grid alignment and weekend
+   column shading are untouched. */
 .cadence-calendar-wrapper #calendar-container .day.today,
-.cadence-calendar-wrapper #calendar-container .day.today:hover {
+.cadence-calendar-wrapper #calendar-container .day.today:hover,
+.cadence-calendar-wrapper #calendar-container .day.active.today,
+.cadence-calendar-wrapper #calendar-container .day.active.today:hover {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.cadence-calendar-wrapper #calendar-container .day.today .day-highlight,
+.cadence-calendar-wrapper #calendar-container .day.today:hover .day-highlight,
+.cadence-calendar-wrapper #calendar-container .day.active.today .day-highlight,
+.cadence-calendar-wrapper #calendar-container .day.active.today:hover .day-highlight {
   background-color: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.18);
   border: 1px solid hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.45);
-  border-radius: 8px;
   box-shadow: 0 0 0 2px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.15);
 }
 
-/* Keep today's number the same color as other dates. */
-.cadence-calendar-wrapper #calendar-container .day.today .day-number {
-  color: var(--color-text-day, var(--text-normal));
+/* Keep today's number bright and crisp in both plain and selected states. */
+.cadence-calendar-wrapper #calendar-container .day.today .day-number,
+.cadence-calendar-wrapper #calendar-container .day.active.today .day-number {
+  color: var(--text-normal) !important;
   font-weight: 600;
   font-size: large;
+}
+
+/* Today's indicator dot keeps the bright accent color even when selected. */
+.cadence-calendar-wrapper #calendar-container .day.today .dot.filled,
+.cadence-calendar-wrapper #calendar-container .day.active.today .dot.filled {
+  fill: var(--interactive-accent) !important;
 }
 
 /* A selected non-today date stays visually plain; only its note dot is accented. */
@@ -152,11 +171,11 @@ body.cc-weekend-use-custom-color {
   fill: var(--text-accent) !important;
 }
 
-/* Give day/week cells a little extra top breathing room so a top-centered
-   emoji badge sits cleanly above the date number without touching it. */
+/* Leave room above the inner day box for the emoji badge. The same padding
+   is used on every day/week cell, so date numbers stay on one baseline. */
 .cadence-calendar-wrapper #calendar-container .day,
 .cadence-calendar-wrapper #calendar-container .week-num {
-  padding-top: 8px;
+  padding-top: 14px;
 }
 
 /* Let the containing tab stack collapse around the tab bar + Week View too.
@@ -190,18 +209,79 @@ body.cc-weekend-use-custom-color {
   padding-bottom: 12px;
 }
 
-/* Render frontmatter emoji tags (e.g. tags: [⭐] or tags: [✈️]) centered above the day number */
-.cadence-calendar-wrapper #calendar-container .day[data-emoji-tag]::after,
+/* Week View only: center the single-row widget inside the leaf card and give
+   the isolated row a little more presence. Month View has no .is-week-view,
+   so none of these rules touch its grid, spacing, or alignment. */
+.cadence-calendar-wrapper.is-week-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+  min-height: 0;
+}
+
+.cadence-calendar-wrapper.is-week-view #calendar-container {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.cadence-calendar-wrapper.is-week-view #calendar-container table.week-view {
+  width: 100%;
+}
+
+.cadence-calendar-wrapper.is-week-view #calendar-container table.week-view td {
+  height: 40px;
+  vertical-align: middle;
+}
+
+.cadence-calendar-wrapper.is-week-view #calendar-container table.week-view th.weekend,
+.cadence-calendar-wrapper.is-week-view #calendar-container table.week-view td.weekend {
+  background-clip: padding-box;
+}
+
+.cadence-calendar-wrapper.is-week-view .week-detail-footer {
+  align-items: center;
+  border-top: 1px solid var(--background-modifier-border);
+  box-sizing: border-box;
+  color: var(--text-muted);
+  display: flex;
+  font-size: 11px;
+  cursor: default;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 8px 8px 0;
+  width: 100%;
+}
+
+.cadence-calendar-wrapper.is-week-view .week-detail-count {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+/* Frontmatter emoji tags (e.g. tags: [⭐] or tags: [✈️]) sit completely
+   above the inner day box. Absolute positioning keeps the day-number baseline
+   identical with and without a badge, and clears the Today border/ring. */
+.cadence-calendar-wrapper #calendar-container .day,
+.cadence-calendar-wrapper #calendar-container .day-highlight,
+.cadence-calendar-wrapper #calendar-container .week-num {
+  overflow: visible;
+}
+
+.cadence-calendar-wrapper #calendar-container .day.has-background-image[data-emoji-tag] {
+  overflow: visible;
+}
+
+.cadence-calendar-wrapper #calendar-container .day-highlight[data-emoji-tag]::after,
 .cadence-calendar-wrapper #calendar-container .week-num[data-emoji-tag]::after {
+  bottom: calc(100% + 5px);
   content: attr(data-emoji-tag);
-  position: absolute;
-  top: 1px;
+  font-size: 10.5px;
   left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  font-size: 0.62em;
   line-height: 1;
   pointer-events: none;
+  position: absolute;
+  right: auto;
+  transform: translateX(-50%);
   z-index: 2;
 }
 

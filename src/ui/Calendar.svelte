@@ -6,6 +6,8 @@
   import { configureGlobalMomentLocale } from "./calendar-ui/localization";
   import type { ICalendarSource } from "./calendar-ui/types";
   import { getMonthsWithNotes } from "src/io/yearNotes";
+  import { getDateUID } from "src/io/periodicNoteHelpers";
+  import { getWeekStartForSetting } from "./calendar-ui/localization";
 
   import type { ISettings, PeriodicNoteSettings } from "src/settings";
   import { moment } from "src/types/moment";
@@ -54,6 +56,30 @@
   // store is mutated ($storeRevision) OR when an explicit calendar tick fires
   // (e.g. frontmatter / metadata / thumbnail / day rollover).
   const revision = $derived($storeRevision + tickRevision);
+
+  // Week View footer: prefer the active daily note's date; otherwise anchor to
+  // today. parseZone keeps the UID's original UTC offset so the store lookup
+  // matches the exact key written by getDateUID().
+  const selectedDailyDate = $derived.by(() => {
+    const id = $activeFile;
+    if (id?.startsWith("day-")) {
+      const parsed = moment.parseZone(id.slice(4));
+      if (parsed.isValid()) return parsed;
+    }
+    return today;
+  });
+  // Count daily-note days in the displayed 7-day window. The store is keyed
+  // by the same getDateUID() value the day-cell dots use, so this matches the
+  // visible indicators exactly.
+  const notesInDisplayedWeek = $derived.by(() => {
+    const start = getWeekStartForSetting(displayedMonth, $settings.weekStart);
+    let count = 0;
+    for (let offset = 0; offset < 7; offset += 1) {
+      const day = start.clone().add(offset, "days");
+      if ($dailyNotes?.[getDateUID(day, "daily")]) count += 1;
+    }
+    return count;
+  });
 
   // Settings → locale + store reindex. Side effects, so this lives in
   // $effect.pre (runs before the DOM updates, keeping the legacy `$:`
@@ -234,6 +260,8 @@
   class:yearly-enabled={$settings.yearly.enabled}
   class:weekend-shading-enabled={$settings.shadeWeekendColumns}
   class:week-view={$settings.viewMode === "week"}
+  class:is-week-view={$settings.viewMode === "week"}
+  data-view-mode={$settings.viewMode}
 >
   <CalendarBase
     {sources}
@@ -264,4 +292,10 @@
     showYearOverview={$settings.showYearOverview}
     {monthsWithNotes}
   />
+  {#if $settings.viewMode === "week" && $settings.daily.enabled}
+    <div class="week-detail-footer">
+      <span class="week-detail-date">{selectedDailyDate.format("ddd, MMM D")}</span>
+      <span class="week-detail-count">{notesInDisplayedWeek}/7 notes</span>
+    </div>
+  {/if}
 </div>

@@ -57,11 +57,16 @@
           ((e) => onHover(date, e.currentTarget, isMetaPressed(e)))}
         {...metadata.dataAttributes || {}}
       >
-        <span class="day-number">{date.format("D")}</span>
-        <div class="dot-container">
-          {#each metadata.dots ?? [] as dot}
-            <Dot {...dot} />
-          {/each}
+        <div
+          class="day-highlight"
+          data-emoji-tag={metadata.dataAttributes?.["data-emoji-tag"] ?? undefined}
+        >
+          <span class="day-number">{date.format("D")}</span>
+          <div class="dot-container">
+            {#each metadata.dots ?? [] as dot}
+              <Dot {...dot} />
+            {/each}
+          </div>
         </div>
       </div>
     {/snippet}
@@ -87,6 +92,22 @@
     transition: background-color 0.1s ease-in, color 0.1s ease-in;
     vertical-align: baseline;
   }
+  /* Snug box that carries the today/selected highlight. The outer .day and
+     td stay full-size and clickable, so cell hit areas and weekend shading
+     do not change. */
+  .day-highlight {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+    min-height: 34px;
+    position: relative;
+    width: 32px;
+  }
+
   .day:hover {
     background-color: var(--interactive-hover);
   }

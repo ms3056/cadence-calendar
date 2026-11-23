@@ -341,7 +341,7 @@
     border: 1px solid var(--background-modifier-border);
     border-radius: 999px;
     display: inline-flex;
-    gap: 2px;
+    gap: 1px;
     margin-right: 4px;
     padding: 2px;
   }
@@ -353,12 +353,12 @@
     box-shadow: none;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     height: auto;
-    line-height: 1.2;
+    line-height: 1.3;
     min-height: 0;
-    padding: 2px 9px;
+    padding: 1px 7px;
   }
 
   .view-toggle button:hover {
@@ -368,7 +368,7 @@
   .view-toggle button.active {
     background: var(--interactive-accent);
     color: var(--text-on-accent);
-    margin: 2px;
+    margin: 0;
   }
 
   .year-overview-toggle {
