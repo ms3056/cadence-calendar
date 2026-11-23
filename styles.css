@@ -178,6 +178,68 @@ body.cc-weekend-use-custom-color {
   padding-top: 14px;
 }
 
+/* Reclaim horizontal space in this view only: Obsidian's leaf padding plus
+   the calendar container's own inset left the header/grid too narrow. */
+.workspace-leaf-content[data-type="cadence-calendar-view"] > .view-content {
+  container-type: inline-size;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.workspace-leaf-content[data-type="cadence-calendar-view"] #calendar-container {
+  box-sizing: border-box;
+  padding-left: 10px;
+  padding-right: 10px;
+  width: 100%;
+}
+
+/* Compact the < TODAY > group without changing the shared pill size. */
+.cadence-calendar-wrapper #calendar-container .right-nav .arrow {
+  width: 20px;
+}
+
+.cadence-calendar-wrapper #calendar-container .right-nav .arrow.is-mobile {
+  width: 24px;
+}
+
+/* Narrow sidebars: keep one row by truncating the date title instead of
+   clipping the controls. Normal widths keep the full nowrap title. */
+@container (max-width: 380px) {
+  .cadence-calendar-wrapper #calendar-container .title {
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cadence-calendar-wrapper #calendar-container .title.week-title {
+    font-size: 0.98rem;
+  }
+
+  .cadence-calendar-wrapper #calendar-container .right-nav {
+    gap: 3px;
+  }
+
+  .cadence-calendar-wrapper #calendar-container .right-nav .arrow {
+    width: 18px;
+  }
+
+  .cadence-calendar-wrapper #calendar-container .view-toggle {
+    margin-right: 1px;
+  }
+
+  .cadence-calendar-wrapper #calendar-container .view-toggle button {
+    font-size: 9px;
+    padding: 1px 5px;
+  }
+
+  .cadence-calendar-wrapper #calendar-container .reset-button {
+    letter-spacing: 0;
+    margin: 0 1px;
+    padding: 0 1px;
+  }
+}
+
 /* Let the containing tab stack collapse around the tab bar + Week View too.
    Obsidian otherwise applies a flex min-height to .workspace-tabs/.workspace-tab-container,
    which keeps the sidebar split divider from closing tightly around a short view. */
@@ -230,7 +292,7 @@ body.cc-weekend-use-custom-color {
 }
 
 .cadence-calendar-wrapper.is-week-view #calendar-container table.week-view td {
-  height: 40px;
+  height: 38px;
   vertical-align: middle;
 }
 
@@ -248,8 +310,8 @@ body.cc-weekend-use-custom-color {
   font-size: 11px;
   cursor: default;
   justify-content: space-between;
-  margin-top: 10px;
-  padding: 8px 8px 0;
+  margin-top: 6px;
+  padding: 6px 10px 0;
   width: 100%;
 }
 

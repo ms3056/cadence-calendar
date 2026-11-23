@@ -208,13 +208,13 @@
     gap: 6px;
     justify-content: space-between;
     margin: 0.6em 0 0;
-    padding: 0 8px;
+    padding: 0;
     width: 100%;
   }
 
   .nav.is-mobile {
-    /* Match desktop left padding so the mobile title aligns with the grid. */
-    padding: 0 0 0 8px;
+    /* The container supplies the 10px inset for both views. */
+    padding: 0;
   }
 
   .title-container {
@@ -224,7 +224,7 @@
   }
 
   .sub-header {
-    margin: 2px 8px 8px;
+    margin: 2px 0 8px;
   }
 
   .sub-header.hidden {
@@ -233,9 +233,11 @@
 
   .title {
     color: var(--color-text-title);
+    flex-shrink: 0;
     font-size: 1.5em;
     line-height: 1.2;
     margin: 0;
+    white-space: nowrap;
   }
 
   .title.week-title {
@@ -304,6 +306,8 @@
   .right-nav {
     align-items: center;
     display: flex;
+    flex-shrink: 0;
+    gap: 4px;
     justify-content: flex-end;
     margin-left: 0;
   }
@@ -318,8 +322,8 @@
     font-size: 0.7em;
     font-weight: 600;
     letter-spacing: 1px;
-    margin: 0 4px;
-    padding: 0 4px;
+    margin: 0 2px;
+    padding: 0 2px;
     text-transform: uppercase;
   }
 
@@ -342,7 +346,7 @@
     border-radius: 999px;
     display: inline-flex;
     gap: 1px;
-    margin-right: 4px;
+    margin-right: 2px;
     padding: 2px;
   }
 
