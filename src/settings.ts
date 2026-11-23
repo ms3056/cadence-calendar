@@ -25,7 +25,6 @@ export type Periodicity =
 export interface PeriodicNoteSettings {
   enabled: boolean;
   autoCreate: boolean;
-  openOnAutoCreate: boolean;
   format: string;
   folder: string;
   template: string;
@@ -164,7 +163,6 @@ export const defaultSettings = Object.freeze({
   daily: {
     enabled: true,
     autoCreate: false,
-    openOnAutoCreate: false,
     format: DEFAULT_DAILY_NOTE_FORMAT,
     folder: "",
     template: "",
@@ -172,7 +170,6 @@ export const defaultSettings = Object.freeze({
   weekly: {
     enabled: false,
     autoCreate: false,
-    openOnAutoCreate: false,
     format: DEFAULT_WEEKLY_NOTE_FORMAT,
     folder: "",
     template: "",
@@ -180,7 +177,6 @@ export const defaultSettings = Object.freeze({
   monthly: {
     enabled: false,
     autoCreate: false,
-    openOnAutoCreate: false,
     format: DEFAULT_MONTHLY_NOTE_FORMAT,
     folder: "",
     template: "",
@@ -188,7 +184,6 @@ export const defaultSettings = Object.freeze({
   quarterly: {
     enabled: false,
     autoCreate: false,
-    openOnAutoCreate: false,
     format: DEFAULT_QUARTERLY_NOTE_FORMAT,
     folder: "",
     template: "",
@@ -196,7 +191,6 @@ export const defaultSettings = Object.freeze({
   yearly: {
     enabled: false,
     autoCreate: false,
-    openOnAutoCreate: false,
     format: DEFAULT_YEARLY_NOTE_FORMAT,
     folder: "",
     template: "",
@@ -204,7 +198,6 @@ export const defaultSettings = Object.freeze({
   secondDaily: {
     enabled: false,
     autoCreate: false,
-    openOnAutoCreate: false,
     format: DEFAULT_DAILY_NOTE_FORMAT,
     folder: "",
     template: "",
@@ -664,22 +657,6 @@ export class CalendarSettingsTab extends PluginSettingTab {
           }
         });
       });
-
-    if (pnSettings.autoCreate) {
-      new Setting(sectionEl)
-        .setName(`Open auto-created ${periodicity} note`)
-        .setDesc(
-          `Automatically open the ${periodicity} note in the editor when it is created automatically.`
-        )
-        .addToggle((toggle) => {
-          toggle.setValue(Boolean(pnSettings.openOnAutoCreate));
-          toggle.onChange(async (value) => {
-            await this.plugin.writeOptions((prev) => ({
-              [periodicity]: { ...prev[periodicity], openOnAutoCreate: value },
-            }));
-          });
-        });
-    }
 
     if (periodicity === "daily") {
       new Setting(sectionEl)

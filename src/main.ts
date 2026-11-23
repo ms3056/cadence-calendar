@@ -353,12 +353,6 @@ export default class CalendarPlugin extends Plugin {
           store.addFile(createdFile);
           anyChanged = true;
           created.push(`${periodicity}: ${createdFile.basename}`);
-
-          if (perPeriod.openOnAutoCreate) {
-            const leaf = this.app.workspace.getLeaf(false);
-            await leaf.openFile(createdFile, { active: true });
-            activeFile.setFile(createdFile);
-          }
         } catch (err) {
           errors.push(periodicity);
           console.error(

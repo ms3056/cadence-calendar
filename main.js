@@ -5694,7 +5694,6 @@ const defaultSettings = Object.freeze({
     daily: {
         enabled: true,
         autoCreate: false,
-        openOnAutoCreate: false,
         format: DEFAULT_DAILY_NOTE_FORMAT,
         folder: "",
         template: "",
@@ -5702,7 +5701,6 @@ const defaultSettings = Object.freeze({
     weekly: {
         enabled: false,
         autoCreate: false,
-        openOnAutoCreate: false,
         format: DEFAULT_WEEKLY_NOTE_FORMAT,
         folder: "",
         template: "",
@@ -5710,7 +5708,6 @@ const defaultSettings = Object.freeze({
     monthly: {
         enabled: false,
         autoCreate: false,
-        openOnAutoCreate: false,
         format: DEFAULT_MONTHLY_NOTE_FORMAT,
         folder: "",
         template: "",
@@ -5718,7 +5715,6 @@ const defaultSettings = Object.freeze({
     quarterly: {
         enabled: false,
         autoCreate: false,
-        openOnAutoCreate: false,
         format: DEFAULT_QUARTERLY_NOTE_FORMAT,
         folder: "",
         template: "",
@@ -5726,7 +5722,6 @@ const defaultSettings = Object.freeze({
     yearly: {
         enabled: false,
         autoCreate: false,
-        openOnAutoCreate: false,
         format: DEFAULT_YEARLY_NOTE_FORMAT,
         folder: "",
         template: "",
@@ -5734,7 +5729,6 @@ const defaultSettings = Object.freeze({
     secondDaily: {
         enabled: false,
         autoCreate: false,
-        openOnAutoCreate: false,
         format: DEFAULT_DAILY_NOTE_FORMAT,
         folder: "",
         template: "",
@@ -6088,19 +6082,6 @@ class CalendarSettingsTab extends obsidian.PluginSettingTab {
                 }
             });
         });
-        if (pnSettings.autoCreate) {
-            new obsidian.Setting(sectionEl)
-                .setName(`Open auto-created ${periodicity} note`)
-                .setDesc(`Automatically open the ${periodicity} note in the editor when it is created automatically.`)
-                .addToggle((toggle) => {
-                toggle.setValue(Boolean(pnSettings.openOnAutoCreate));
-                toggle.onChange(async (value) => {
-                    await this.plugin.writeOptions((prev) => ({
-                        [periodicity]: Object.assign(Object.assign({}, prev[periodicity]), { openOnAutoCreate: value }),
-                    }));
-                });
-            });
-        }
         if (periodicity === "daily") {
             new obsidian.Setting(sectionEl)
                 .setName("Open today's daily note on startup")
@@ -12035,11 +12016,6 @@ class CalendarPlugin extends obsidian.Plugin {
                     store.addFile(createdFile);
                     anyChanged = true;
                     created.push(`${periodicity}: ${createdFile.basename}`);
-                    if (perPeriod.openOnAutoCreate) {
-                        const leaf = this.app.workspace.getLeaf(false);
-                        await leaf.openFile(createdFile, { active: true });
-                        activeFile.setFile(createdFile);
-                    }
                 }
                 catch (err) {
                     errors.push(periodicity);
