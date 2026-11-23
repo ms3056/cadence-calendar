@@ -382,8 +382,9 @@ export default class CalendarPlugin extends Plugin {
   }
 
   /**
-   * Open today's daily note on startup. Runs after ensureAutoCreatedNotes() so
-   * the note always exists first; creates it on demand if auto-create is off.
+   * Open today's daily note on startup. Runs after ensureAutoCreatedNotes().
+   * Never creates a note itself: if auto-create is off and the note is missing,
+   * it simply reports that and leaves the vault untouched.
    */
   private async openDailyNoteOnStartup(): Promise<void> {
     if (!this.options.openDailyNoteOnStartup || !this.options.daily.enabled) return;
@@ -406,6 +407,12 @@ export default class CalendarPlugin extends Plugin {
       if (existingOnDisk instanceof TFile) {
         file = existingOnDisk;
         dailyNotes.addFile(existingOnDisk);
+      } else if (!perPeriod.autoCreate) {
+        new Notice(
+          "Cadence Calendar — today's daily note does not exist and auto-create is off; nothing was created.",
+          6000
+        );
+        return;
       } else {
         try {
           file = await createPeriodicNote("daily", targetDate, perPeriod);

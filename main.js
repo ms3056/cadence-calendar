@@ -6085,7 +6085,7 @@ class CalendarSettingsTab extends obsidian.PluginSettingTab {
         if (periodicity === "daily") {
             new obsidian.Setting(sectionEl)
                 .setName("Open today's daily note on startup")
-                .setDesc("When Obsidian starts, make sure today's daily note exists, then open it. This runs after auto-create, so a note created at startup is opened too.")
+                .setDesc("Opens today's daily note on startup, whether it already exists or was just created by auto-create. If auto-create is off and the note is missing, nothing is created.")
                 .addToggle((toggle) => {
                 toggle.setValue(Boolean(this.plugin.options.openDailyNoteOnStartup));
                 toggle.onChange(async (value) => {
@@ -12044,8 +12044,9 @@ class CalendarPlugin extends obsidian.Plugin {
         }
     }
     /**
-     * Open today's daily note on startup. Runs after ensureAutoCreatedNotes() so
-     * the note always exists first; creates it on demand if auto-create is off.
+     * Open today's daily note on startup. Runs after ensureAutoCreatedNotes().
+     * Never creates a note itself: if auto-create is off and the note is missing,
+     * it simply reports that and leaves the vault untouched.
      */
     async openDailyNoteOnStartup() {
         var _a, _b;
@@ -12061,6 +12062,10 @@ class CalendarPlugin extends obsidian.Plugin {
             if (existingOnDisk instanceof obsidian.TFile) {
                 file = existingOnDisk;
                 dailyNotes.addFile(existingOnDisk);
+            }
+            else if (!perPeriod.autoCreate) {
+                new obsidian.Notice("Cadence Calendar — today's daily note does not exist and auto-create is off; nothing was created.", 6000);
+                return;
             }
             else {
                 try {

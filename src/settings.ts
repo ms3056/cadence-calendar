@@ -662,7 +662,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
       new Setting(sectionEl)
         .setName("Open today's daily note on startup")
         .setDesc(
-          "When Obsidian starts, make sure today's daily note exists, then open it. This runs after auto-create, so a note created at startup is opened too."
+          "Opens today's daily note on startup, whether it already exists or was just created by auto-create. If auto-create is off and the note is missing, nothing is created."
         )
         .addToggle((toggle) => {
           toggle.setValue(Boolean(this.plugin.options.openDailyNoteOnStartup));
