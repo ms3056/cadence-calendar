@@ -650,7 +650,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
     new Setting(sectionEl)
       .setName(`Auto-create current ${periodicity} note`)
       .setDesc(
-        `Automatically create the current ${periodicity} note on startup and when the period rolls over if it does not exist yet.`
+        `Automatically create the current ${periodicity} note on startup/reload if it does not exist yet. Run the command "Cadence Calendar: Create missing notes" any time you want to check manually.`
       )
       .addToggle((toggle) => {
         toggle.setValue(Boolean(pnSettings.autoCreate));

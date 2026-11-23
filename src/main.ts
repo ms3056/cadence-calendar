@@ -1,4 +1,4 @@
-import { Plugin, TFile, normalizePath } from "obsidian";
+import { Notice, Plugin, TFile, normalizePath } from "obsidian";
 import type { App, WorkspaceLeaf } from "obsidian";
 import { get } from "svelte/store";
 
@@ -25,6 +25,13 @@ import type { ISettings, Periodicity } from "./settings";
 import { moment } from "./types/moment";
 import type { Moment, WeekSpec } from "./types/moment";
 import CalendarView from "./view";
+
+type AutoCreateResult = {
+  created: string[];
+  indexed: string[];
+  errors: string[];
+  skipped: boolean;
+};
 
 declare global {
   interface Window {
@@ -243,9 +250,9 @@ export default class CalendarPlugin extends Plugin {
 
     this.addCommand({
       id: "ensure-auto-created-notes",
-      name: "Create missing current periodic notes now",
+      name: "Create missing notes",
       callback: () => {
-        void this.ensureAutoCreatedNotes();
+        void this.ensureAutoCreatedNotes(true);
       },
     });
 
@@ -270,16 +277,6 @@ export default class CalendarPlugin extends Plugin {
         }
       }, 8000);
     });
-
-    // Check once a minute so period rollovers (midnight, new week/month/quarter/year)
-    // automatically create the new note when autoCreate is enabled.
-    this.registerInterval(
-      window.setInterval(() => {
-        if (this.app.workspace.layoutReady) {
-          void this.ensureAutoCreatedNotes();
-        }
-      }, 60 * 1000)
-    );
   }
 
   onunload(): void {
@@ -297,9 +294,16 @@ export default class CalendarPlugin extends Plugin {
     secondDailyNotes.reindex();
   }
 
-  public async ensureAutoCreatedNotes(): Promise<void> {
-    if (!this.app.workspace.layoutReady || this.autoCreateInFlight) return;
+  public async ensureAutoCreatedNotes(
+    notify = false
+  ): Promise<AutoCreateResult> {
+    if (!this.app.workspace.layoutReady || this.autoCreateInFlight) {
+      return { created: [], indexed: [], errors: [], skipped: true };
+    }
     this.autoCreateInFlight = true;
+    const created: string[] = [];
+    const indexed: string[] = [];
+    const errors: string[] = [];
     try {
       configureGlobalMomentLocale(
         this.options.localeOverride,
@@ -335,6 +339,7 @@ export default class CalendarPlugin extends Plugin {
         if (existingOnDisk instanceof TFile) {
           if (store.addFile(existingOnDisk)) {
             anyChanged = true;
+            indexed.push(`${periodicity}: ${existingOnDisk.basename}`);
           }
           continue;
         }
@@ -347,6 +352,7 @@ export default class CalendarPlugin extends Plugin {
           );
           store.addFile(createdFile);
           anyChanged = true;
+          created.push(`${periodicity}: ${createdFile.basename}`);
 
           if (perPeriod.openOnAutoCreate) {
             const leaf = this.app.workspace.getLeaf(false);
@@ -354,6 +360,7 @@ export default class CalendarPlugin extends Plugin {
             activeFile.setFile(createdFile);
           }
         } catch (err) {
+          errors.push(periodicity);
           console.error(
             `[Cadence Calendar] Failed to auto-create ${periodicity} note`,
             err
@@ -364,6 +371,17 @@ export default class CalendarPlugin extends Plugin {
       if (anyChanged) {
         this.refreshAllCalendarViews();
       }
+
+      if (notify) {
+        const parts: string[] = [];
+        if (created.length) parts.push(`Created ${created.join(", ")}`);
+        if (indexed.length) parts.push(`Indexed ${indexed.join(", ")}`);
+        if (errors.length) parts.push(`Failed: ${errors.join(", ")}`);
+        if (!parts.length) parts.push("All current notes are up to date");
+        new Notice(`Cadence Calendar — ${parts.join("; ")}`, errors.length ? 8000 : 4000);
+      }
+
+      return { created, indexed, errors, skipped: false };
     } finally {
       this.autoCreateInFlight = false;
     }
