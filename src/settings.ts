@@ -119,6 +119,8 @@ export interface ISettings {
    * and years. Default false (opt-in).
    */
   showYearOverview: boolean;
+  /** Open today's daily note when Obsidian starts, creating it first if needed. */
+  openDailyNoteOnStartup: boolean;
 
   localeOverride: ILocaleOverride;
 
@@ -155,6 +157,7 @@ export const defaultSettings = Object.freeze({
   wordsPerDot: 250,
   showTodayButtonOnMobile: false,
   showYearOverview: false,
+  openDailyNoteOnStartup: false,
 
   localeOverride: "system-default",
 
@@ -674,6 +677,20 @@ export class CalendarSettingsTab extends PluginSettingTab {
             await this.plugin.writeOptions((prev) => ({
               [periodicity]: { ...prev[periodicity], openOnAutoCreate: value },
             }));
+          });
+        });
+    }
+
+    if (periodicity === "daily") {
+      new Setting(sectionEl)
+        .setName("Open today's daily note on startup")
+        .setDesc(
+          "When Obsidian starts, make sure today's daily note exists, then open it. This runs after auto-create, so a note created at startup is opened too."
+        )
+        .addToggle((toggle) => {
+          toggle.setValue(Boolean(this.plugin.options.openDailyNoteOnStartup));
+          toggle.onChange(async (value) => {
+            await this.plugin.writeOptions(() => ({ openDailyNoteOnStartup: value }));
           });
         });
     }

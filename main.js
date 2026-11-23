@@ -5689,6 +5689,7 @@ const defaultSettings = Object.freeze({
     wordsPerDot: 250,
     showTodayButtonOnMobile: false,
     showYearOverview: false,
+    openDailyNoteOnStartup: false,
     localeOverride: "system-default",
     daily: {
         enabled: true,
@@ -6097,6 +6098,17 @@ class CalendarSettingsTab extends obsidian.PluginSettingTab {
                     await this.plugin.writeOptions((prev) => ({
                         [periodicity]: Object.assign(Object.assign({}, prev[periodicity]), { openOnAutoCreate: value }),
                     }));
+                });
+            });
+        }
+        if (periodicity === "daily") {
+            new obsidian.Setting(sectionEl)
+                .setName("Open today's daily note on startup")
+                .setDesc("When Obsidian starts, make sure today's daily note exists, then open it. This runs after auto-create, so a note created at startup is opened too.")
+                .addToggle((toggle) => {
+                toggle.setValue(Boolean(this.plugin.options.openDailyNoteOnStartup));
+                toggle.onChange(async (value) => {
+                    await this.plugin.writeOptions(() => ({ openDailyNoteOnStartup: value }));
                 });
             });
         }
@@ -11949,6 +11961,8 @@ class CalendarPlugin extends obsidian.Plugin {
             this.initLeaf();
             this.reindexAllStores();
             await this.ensureAutoCreatedNotes();
+            // Must run AFTER auto-create so a note created at startup exists before opening.
+            await this.openDailyNoteOnStartup();
             this.refreshAllCalendarViews();
             // Catch-up reindex: another plugin (core Daily Notes, daily-note-automater,
             // sync) can create a note in the first seconds after layout-ready, after
@@ -12039,6 +12053,44 @@ class CalendarPlugin extends obsidian.Plugin {
         finally {
             this.autoCreateInFlight = false;
         }
+    }
+    /**
+     * Open today's daily note on startup. Runs after ensureAutoCreatedNotes() so
+     * the note always exists first; creates it on demand if auto-create is off.
+     */
+    async openDailyNoteOnStartup() {
+        var _a, _b;
+        if (!this.options.openDailyNoteOnStartup || !this.options.daily.enabled)
+            return;
+        configureGlobalMomentLocale(this.options.localeOverride, this.options.weekStart);
+        const perPeriod = this.options.daily;
+        const targetDate = getPeriodTargetDate(moment(), "daily");
+        let file = getPeriodicNote(targetDate, "daily", (_a = get$1(dailyNotes)) !== null && _a !== void 0 ? _a : {});
+        if (!file) {
+            const expectedPath = getPeriodicNotePath(perPeriod, targetDate);
+            const existingOnDisk = this.app.vault.getAbstractFileByPath(expectedPath);
+            if (existingOnDisk instanceof obsidian.TFile) {
+                file = existingOnDisk;
+                dailyNotes.addFile(existingOnDisk);
+            }
+            else {
+                try {
+                    file = await createPeriodicNote("daily", targetDate, perPeriod);
+                    dailyNotes.addFile(file);
+                }
+                catch (err) {
+                    console.error("[Cadence Calendar] Failed to create daily note for startup open", err);
+                    return;
+                }
+            }
+        }
+        if (((_b = this.app.workspace.getActiveFile()) === null || _b === void 0 ? void 0 : _b.path) === file.path) {
+            activeFile.setFile(file);
+            return;
+        }
+        const leaf = this.app.workspace.getLeaf(false);
+        await leaf.openFile(file, { active: true });
+        activeFile.setFile(file);
     }
     refreshAllCalendarViews() {
         for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR)) {

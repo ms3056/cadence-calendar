@@ -255,6 +255,8 @@ export default class CalendarPlugin extends Plugin {
       this.initLeaf();
       this.reindexAllStores();
       await this.ensureAutoCreatedNotes();
+      // Must run AFTER auto-create so a note created at startup exists before opening.
+      await this.openDailyNoteOnStartup();
       this.refreshAllCalendarViews();
       // Catch-up reindex: another plugin (core Daily Notes, daily-note-automater,
       // sync) can create a note in the first seconds after layout-ready, after
@@ -365,6 +367,54 @@ export default class CalendarPlugin extends Plugin {
     } finally {
       this.autoCreateInFlight = false;
     }
+  }
+
+  /**
+   * Open today's daily note on startup. Runs after ensureAutoCreatedNotes() so
+   * the note always exists first; creates it on demand if auto-create is off.
+   */
+  private async openDailyNoteOnStartup(): Promise<void> {
+    if (!this.options.openDailyNoteOnStartup || !this.options.daily.enabled) return;
+
+    configureGlobalMomentLocale(
+      this.options.localeOverride,
+      this.options.weekStart
+    );
+    const perPeriod = this.options.daily;
+    const targetDate = getPeriodTargetDate(moment(), "daily");
+    let file: TFile | null = helperGetPeriodicNote(
+      targetDate,
+      "daily",
+      get(dailyNotes) ?? {}
+    );
+
+    if (!file) {
+      const expectedPath = getPeriodicNotePath(perPeriod, targetDate);
+      const existingOnDisk = this.app.vault.getAbstractFileByPath(expectedPath);
+      if (existingOnDisk instanceof TFile) {
+        file = existingOnDisk;
+        dailyNotes.addFile(existingOnDisk);
+      } else {
+        try {
+          file = await createPeriodicNote("daily", targetDate, perPeriod);
+          dailyNotes.addFile(file);
+        } catch (err) {
+          console.error(
+            "[Cadence Calendar] Failed to create daily note for startup open",
+            err
+          );
+          return;
+        }
+      }
+    }
+
+    if (this.app.workspace.getActiveFile()?.path === file.path) {
+      activeFile.setFile(file);
+      return;
+    }
+    const leaf = this.app.workspace.getLeaf(false);
+    await leaf.openFile(file, { active: true });
+    activeFile.setFile(file);
   }
 
   private refreshAllCalendarViews(): void {
