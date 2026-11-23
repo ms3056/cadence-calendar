@@ -5,7 +5,7 @@
   import Dot from "./Dot.svelte";
   import MetadataResolver from "./MetadataResolver.svelte";
   import type { IDayMetadata } from "../types";
-  import { isAltPressed, isMetaPressed, isWeekend } from "../utils";
+  import { isMetaPressed, isWeekend } from "../utils";
 
   let {
     // Properties
@@ -24,7 +24,7 @@
     date: Moment;
     metadata: Promise<IDayMetadata> | null;
     onHover: (date: Moment, targetEl: EventTarget, isMetaPressed: boolean) => void;
-    onClick: (date: Moment, isMetaPressed: boolean, isAltPressed?: boolean) => void;
+    onClick: (date: Moment, event: MouseEvent) => void;
     onContextMenu: (date: Moment, event: MouseEvent) => void;
     today: Moment;
     displayedMonth?: Moment | null;
@@ -51,7 +51,7 @@
         style={metadata.backgroundImage
           ? `background-image: url("${metadata.backgroundImage}")`
           : ""}
-        onclick={onClick && ((e) => onClick(date, isMetaPressed(e), isAltPressed(e)))}
+        onclick={onClick && ((e) => onClick(date, e))}
         oncontextmenu={onContextMenu && ((e) => onContextMenu(date, e))}
         onpointerover={onHover &&
           ((e) => onHover(date, e.currentTarget, isMetaPressed(e)))}

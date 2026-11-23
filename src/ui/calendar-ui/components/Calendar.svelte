@@ -65,7 +65,7 @@
     onContextMenuDay: (date: Moment, event: MouseEvent) => void;
     onContextMenuWeek: (date: Moment, event: MouseEvent) => void;
     quarterVisible: boolean;
-    onClickDay: (date: Moment, isMetaPressed: boolean, isAltPressed?: boolean) => void;
+    onClickDay: (date: Moment, event: MouseEvent) => void;
     onClickWeek: (date: Moment, isMetaPressed: boolean) => void;
     onClickMonth: (date: Moment, isMetaPressed: boolean) => void;
     onClickYear: (date: Moment, isMetaPressed: boolean) => void;

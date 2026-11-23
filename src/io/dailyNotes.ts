@@ -9,7 +9,15 @@ export function tryToCreateDailyNote(
   date: Moment,
   ctrlPressed: boolean,
   settings: ISettings,
-  cb?: (newFile: TFile) => void
+  cb?: (newFile: TFile) => void,
+  openInMainWorkspace = false
 ): Promise<void> {
-  return tryToCreatePeriodicNoteAndOpen("daily", date, ctrlPressed, settings, cb);
+  return tryToCreatePeriodicNoteAndOpen(
+    "daily",
+    date,
+    ctrlPressed,
+    settings,
+    cb,
+    openInMainWorkspace
+  );
 }

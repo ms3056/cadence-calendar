@@ -29,7 +29,7 @@
     sources: ICalendarSource[];
     onHoverDay: (date: Moment, targetEl: EventTarget, isMetaPressed: boolean) => void;
     onHoverWeek: (date: Moment, targetEl: EventTarget, isMetaPressed: boolean) => void;
-    onClickDay: (date: Moment, isMetaPressed: boolean, isAltPressed?: boolean) => void;
+    onClickDay: (date: Moment, event: MouseEvent) => void;
     onClickWeek: (date: Moment, isMetaPressed: boolean) => void;
     onClickMonth: (date: Moment, isMetaPressed: boolean) => void;
     onClickYear: (date: Moment, isMetaPressed: boolean) => void;

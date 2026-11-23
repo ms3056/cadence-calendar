@@ -133,6 +133,21 @@ export function getLeafForModifierClick(
 }
 
 /**
+ * Main-workspace leaf for daily-note clicks. `getLeaf(false)` follows the
+ * active leaf, which is often the calendar sidebar; `getMostRecentLeaf` with
+ * `rootSplit` keeps the note in the editor area instead.
+ */
+export function getMainWorkspaceLeaf(
+  workspace: Workspace,
+  newTab: boolean
+): WorkspaceLeaf {
+  if (newTab) return workspace.getLeaf("tab");
+  return (
+    workspace.getMostRecentLeaf(workspace.rootSplit) ?? workspace.getLeaf("tab")
+  );
+}
+
+/**
  * Create a periodic note (with confirm-before-create UX) and open it in the
  * leaf chosen by the modifier-click logic. Optional callback fires after the
  * file is opened, useful for caller-side activeFile bookkeeping.
@@ -142,12 +157,16 @@ export async function tryToCreatePeriodicNoteAndOpen(
   date: Moment,
   ctrlPressed: boolean,
   settings: ISettings,
-  cb?: (newFile: TFile) => void
+  cb?: (newFile: TFile) => void,
+  openInMainWorkspace = false
 ): Promise<void> {
   await tryToCreatePeriodicNote(periodicity, date, settings, async (newFile) => {
     const { workspace } = window.app;
-    const leaf = getLeafForModifierClick(ctrlPressed, settings, workspace);
+    const leaf = openInMainWorkspace
+      ? getMainWorkspaceLeaf(workspace, ctrlPressed)
+      : getLeafForModifierClick(ctrlPressed, settings, workspace);
     await leaf.openFile(newFile, { active: true });
+    if (openInMainWorkspace) workspace.setActiveLeaf(leaf, { focus: true });
     cb?.(newFile);
   });
 }

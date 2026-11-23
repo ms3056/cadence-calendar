@@ -3,7 +3,7 @@ import {
   getDateFromFile as helperGetDateFromFile,
   getPeriodicNote as helperGetPeriodicNote,
 } from "src/io/periodicNoteHelpers";
-import { Menu, ItemView, TFile } from "obsidian";
+import { Keymap, Menu, ItemView, TFile } from "obsidian";
 import type { TAbstractFile, WorkspaceLeaf } from "obsidian";
 import { mount, unmount } from "svelte";
 import { get } from "svelte/store";
@@ -14,7 +14,7 @@ import { tryToCreateWeeklyNote } from "src/io/weeklyNotes";
 import { tryToCreateMonthlyNote } from "src/io/monthlyNotes";
 import { tryToCreateYearlyNote } from "src/io/yearlyNotes";
 import { tryToCreateQuarterlyNote } from "src/io/quarterlyNotes";
-import { createPeriodicNote, getLeafForModifierClick } from "src/io/periodicNotes";
+import { createPeriodicNote, getLeafForModifierClick, getMainWorkspaceLeaf } from "src/io/periodicNotes";
 import { createConfirmationDialog } from "src/ui/modal";
 import { resolveFeatureImageFile, invalidateFeatureImageCache, invalidateFeatureImageCacheForImage, isImagePath } from "src/io/featureImage";
 import { registerThumbnailReadyCallback, removeThumbnailsForSource } from "src/io/thumbnailCache";
@@ -287,7 +287,7 @@ export default class CalendarView extends ItemView {
             .setTitle("Open daily note")
             .setIcon("calendar-days")
             .setSection("calendar-daily")
-            .onClick(() => void this.openOrCreateDailyNote(date, false))
+            .onClick(() => void this.openOrCreateDailyNote(date))
         );
         menu.addItem((item) =>
           item
@@ -306,7 +306,7 @@ export default class CalendarView extends ItemView {
             // is always its own section, giving a consistent divider above the
             // second-daily items whether or not the primary note exists.
             .setSection("calendar-daily")
-            .onClick(() => void this.openOrCreateDailyNote(date, false))
+            .onClick(() => void this.openOrCreateDailyNote(date))
         );
       }
       menu.addItem((item) =>
@@ -700,7 +700,7 @@ export default class CalendarView extends ItemView {
   // daily note via the same path day-cell clicks use. Plain pane —
   // modifier state isn't passed from the Today control.
   onClickToday = (date: Moment): void => {
-    void this.openOrCreateDailyNote(date, false);
+    void this.openOrCreateDailyNote(date);
   };
 
   openOrCreateWeeklyNote = async (
@@ -734,10 +734,11 @@ export default class CalendarView extends ItemView {
 
   openOrCreateDailyNote = async (
     date: Moment,
-    ctrlPressed: boolean,
-    altPressed = false
+    evt?: MouseEvent | null
   ): Promise<void> => {
     const { workspace } = this.app;
+    const ctrlPressed = !!evt && !!Keymap.isModEvent(evt);
+    const altPressed = evt?.altKey ?? false;
 
     // Option/Alt + click is dedicated to the second daily note: open it if one
     // exists, otherwise prompt to create it (same open-or-create-with-confirm
@@ -760,13 +761,15 @@ export default class CalendarView extends ItemView {
           dailyNotes.addFile(dailyNote);
           activeFile.setFile(dailyNote);
           this.calendar?.tick();
-        }
+        },
+        true
       );
       return;
     }
 
-    const leaf = getLeafForModifierClick(ctrlPressed, this.settings, workspace);
-    await leaf.openFile(existingFile);
+    const leaf = getMainWorkspaceLeaf(workspace, ctrlPressed);
+    await leaf.openFile(existingFile, { active: true });
+    workspace.setActiveLeaf(leaf, { focus: true });
 
     // Synchronous active-file update — see note in openOrCreateWeeklyNote.
     activeFile.setFile(existingFile);

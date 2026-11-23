@@ -5165,15 +5165,30 @@ function getLeafForModifierClick(ctrlPressed, settings, workspace) {
         : workspace.getLeaf("split", "vertical");
 }
 /**
+ * Main-workspace leaf for daily-note clicks. `getLeaf(false)` follows the
+ * active leaf, which is often the calendar sidebar; `getMostRecentLeaf` with
+ * `rootSplit` keeps the note in the editor area instead.
+ */
+function getMainWorkspaceLeaf(workspace, newTab) {
+    var _a;
+    if (newTab)
+        return workspace.getLeaf("tab");
+    return ((_a = workspace.getMostRecentLeaf(workspace.rootSplit)) !== null && _a !== void 0 ? _a : workspace.getLeaf("tab"));
+}
+/**
  * Create a periodic note (with confirm-before-create UX) and open it in the
  * leaf chosen by the modifier-click logic. Optional callback fires after the
  * file is opened, useful for caller-side activeFile bookkeeping.
  */
-async function tryToCreatePeriodicNoteAndOpen(periodicity, date, ctrlPressed, settings, cb) {
+async function tryToCreatePeriodicNoteAndOpen(periodicity, date, ctrlPressed, settings, cb, openInMainWorkspace = false) {
     await tryToCreatePeriodicNote(periodicity, date, settings, async (newFile) => {
         const { workspace } = window.app;
-        const leaf = getLeafForModifierClick(ctrlPressed, settings, workspace);
+        const leaf = openInMainWorkspace
+            ? getMainWorkspaceLeaf(workspace, ctrlPressed)
+            : getLeafForModifierClick(ctrlPressed, settings, workspace);
         await leaf.openFile(newFile, { active: true });
+        if (openInMainWorkspace)
+            workspace.setActiveLeaf(leaf, { focus: true });
         cb === null || cb === void 0 ? void 0 : cb(newFile);
     });
 }
@@ -9213,8 +9228,8 @@ function prop(props, key, flags, fallback) {
 	);
 }
 
-function tryToCreateDailyNote(date, ctrlPressed, settings, cb) {
-    return tryToCreatePeriodicNoteAndOpen("daily", date, ctrlPressed, settings, cb);
+function tryToCreateDailyNote(date, ctrlPressed, settings, cb, openInMainWorkspace = false) {
+    return tryToCreatePeriodicNoteAndOpen("daily", date, ctrlPressed, settings, cb, openInMainWorkspace);
 }
 
 function tryToCreateWeeklyNote(date, ctrlPressed, settings, cb) {
@@ -9423,11 +9438,6 @@ function MetadataResolver($$anchor, $$props) {
 function isMetaPressed(e) {
     return obsidian.Platform.isMacOS ? e.metaKey : e.ctrlKey;
 }
-// Option (macOS) / Alt (Windows/Linux). Cross-platform via the single
-// `altKey` flag. Used on day cells to open an existing second daily note.
-function isAltPressed(e) {
-    return e.altKey;
-}
 function getDaysOfWeek(..._args) {
     return moment.weekdaysShort(true);
 }
@@ -9531,7 +9541,7 @@ function Day($$anchor, $$props) {
 					style: metadata().backgroundImage
 						? `background-image: url("${metadata().backgroundImage}")`
 						: "",
-					onclick: $$props.onClick && ((e) => $$props.onClick($$props.date, isMetaPressed(e), isAltPressed(e))),
+					onclick: $$props.onClick && ((e) => $$props.onClick($$props.date, e)),
 					oncontextmenu: $$props.onContextMenu && ((e) => $$props.onContextMenu($$props.date, e)),
 					onpointerover: $$props.onHover && ((e) => $$props.onHover($$props.date, e.currentTarget, isMetaPressed(e))),
 					...metadata().dataAttributes || {},
@@ -11512,7 +11522,7 @@ class CalendarView extends obsidian.ItemView {
                         .setTitle("Open daily note")
                         .setIcon("calendar-days")
                         .setSection("calendar-daily")
-                        .onClick(() => void this.openOrCreateDailyNote(date, false)));
+                        .onClick(() => void this.openOrCreateDailyNote(date)));
                     menu.addItem((item) => item
                         .setTitle("Delete daily note")
                         .setIcon("trash")
@@ -11528,7 +11538,7 @@ class CalendarView extends obsidian.ItemView {
                         // is always its own section, giving a consistent divider above the
                         // second-daily items whether or not the primary note exists.
                         .setSection("calendar-daily")
-                        .onClick(() => void this.openOrCreateDailyNote(date, false)));
+                        .onClick(() => void this.openOrCreateDailyNote(date)));
                 }
                 menu.addItem((item) => item
                     .setTitle(secondNote ? "Open second daily note" : "Create second daily note")
@@ -11788,7 +11798,7 @@ class CalendarView extends obsidian.ItemView {
         // daily note via the same path day-cell clicks use. Plain pane —
         // modifier state isn't passed from the Today control.
         this.onClickToday = (date) => {
-            void this.openOrCreateDailyNote(date, false);
+            void this.openOrCreateDailyNote(date);
         };
         this.openOrCreateWeeklyNote = async (date, ctrlPressed) => {
             var _a;
@@ -11814,9 +11824,11 @@ class CalendarView extends obsidian.ItemView {
             // quarterly / yearly existing-file paths below.
             activeFile.setFile(existingFile);
         };
-        this.openOrCreateDailyNote = async (date, ctrlPressed, altPressed = false) => {
-            var _a;
+        this.openOrCreateDailyNote = async (date, evt) => {
+            var _a, _b;
             const { workspace } = this.app;
+            const ctrlPressed = !!evt && !!obsidian.Keymap.isModEvent(evt);
+            const altPressed = (_a = evt === null || evt === void 0 ? void 0 : evt.altKey) !== null && _a !== void 0 ? _a : false;
             // Option/Alt + click is dedicated to the second daily note: open it if one
             // exists, otherwise prompt to create it (same open-or-create-with-confirm
             // flow as the right-click "Create Second Daily Note"). Falls through to the
@@ -11828,18 +11840,19 @@ class CalendarView extends obsidian.ItemView {
             }
             if (!this.settings.daily.enabled)
                 return;
-            const existingFile = getPeriodicNote(date, "daily", (_a = get$1(dailyNotes)) !== null && _a !== void 0 ? _a : {});
+            const existingFile = getPeriodicNote(date, "daily", (_b = get$1(dailyNotes)) !== null && _b !== void 0 ? _b : {});
             if (!existingFile) {
                 void tryToCreateDailyNote(date, ctrlPressed, this.settings, (dailyNote) => {
                     var _a;
                     dailyNotes.addFile(dailyNote);
                     activeFile.setFile(dailyNote);
                     (_a = this.calendar) === null || _a === void 0 ? void 0 : _a.tick();
-                });
+                }, true);
                 return;
             }
-            const leaf = getLeafForModifierClick(ctrlPressed, this.settings, workspace);
-            await leaf.openFile(existingFile);
+            const leaf = getMainWorkspaceLeaf(workspace, ctrlPressed);
+            await leaf.openFile(existingFile, { active: true });
+            workspace.setActiveLeaf(leaf, { focus: true });
             // Synchronous active-file update — see note in openOrCreateWeeklyNote.
             activeFile.setFile(existingFile);
         };
