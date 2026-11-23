@@ -120,6 +120,8 @@ export interface ISettings {
   showYearOverview: boolean;
   /** Open today's daily note when Obsidian starts, creating it first if needed. */
   openDailyNoteOnStartup: boolean;
+  /** Calendar layout: month grid (default) or a single-row week strip. */
+  viewMode: "month" | "week";
 
   localeOverride: ILocaleOverride;
 
@@ -157,6 +159,7 @@ export const defaultSettings = Object.freeze({
   showTodayButtonOnMobile: false,
   showYearOverview: false,
   openDailyNoteOnStartup: false,
+  viewMode: "month",
 
   localeOverride: "system-default",
 
@@ -234,6 +237,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
     this.addCtrlClickSetting();
     this.displayDotStyleSection();
     this.addShowTodayButtonOnMobileSetting();
+    this.addDefaultViewSetting();
     this.addShowYearOverviewSetting();
     this.displayWeekendSection();
     this.displayFeatureImageSection();
@@ -252,6 +256,22 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
     new Setting(this.containerEl).setName("Locale").setHeading();
     this.addLocaleOverrideSetting();
+  }
+
+  addDefaultViewSetting(): void {
+    new Setting(this.containerEl)
+      .setName("Default calendar view")
+      .setDesc("Choose the layout shown when Cadence Calendar opens. You can also switch with the icon in the calendar header.")
+      .addDropdown((dropdown) => {
+        dropdown.addOption("month", "Month");
+        dropdown.addOption("week", "Week");
+        dropdown.setValue(this.plugin.options.viewMode);
+        dropdown.onChange(async (value) => {
+          await this.plugin.writeOptions(() => ({
+            viewMode: value as "month" | "week",
+          }));
+        });
+      });
   }
 
   addCtrlClickSetting(): void {

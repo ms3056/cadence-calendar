@@ -5560,6 +5560,20 @@ const weekdays$1 = [
     "friday",
     "saturday",
 ];
+/**
+ * Start of the week containing `date`, computed from the plugin's explicit
+ * week-start setting. `moment.startOf("week")` uses the locale attached to the
+ * moment instance, which can be the pre-configure locale for the initial
+ * `displayedMonth` — that produced Sunday-start dates under Monday-first
+ * headers. Using JS day numbers (`0` = Sunday) avoids instance-locale drift.
+ */
+function getWeekStartForSetting(date, weekStart) {
+    var _a;
+    const localeWeek = moment.localeData()._week;
+    const dow = weekStart === "locale" ? ((_a = localeWeek === null || localeWeek === void 0 ? void 0 : localeWeek.dow) !== null && _a !== void 0 ? _a : 0) : weekdays$1.indexOf(weekStart);
+    const offset = (date.day() - dow + 7) % 7;
+    return date.clone().startOf("day").subtract(offset, "days");
+}
 function overrideGlobalMomentWeekStart(weekStart) {
     const currentLocale = moment.locale();
     // Save the initial locale weekspec so that we can restore
@@ -5690,6 +5704,7 @@ const defaultSettings = Object.freeze({
     showTodayButtonOnMobile: false,
     showYearOverview: false,
     openDailyNoteOnStartup: false,
+    viewMode: "month",
     localeOverride: "system-default",
     daily: {
         enabled: true,
@@ -5756,6 +5771,7 @@ class CalendarSettingsTab extends obsidian.PluginSettingTab {
         this.addCtrlClickSetting();
         this.displayDotStyleSection();
         this.addShowTodayButtonOnMobileSetting();
+        this.addDefaultViewSetting();
         this.addShowYearOverviewSetting();
         this.displayWeekendSection();
         this.displayFeatureImageSection();
@@ -5772,6 +5788,21 @@ class CalendarSettingsTab extends obsidian.PluginSettingTab {
         this.displayPeriodicNoteSettings("yearly", "Yearly notes", DEFAULT_YEARLY_NOTE_FORMAT);
         new obsidian.Setting(this.containerEl).setName("Locale").setHeading();
         this.addLocaleOverrideSetting();
+    }
+    addDefaultViewSetting() {
+        new obsidian.Setting(this.containerEl)
+            .setName("Default calendar view")
+            .setDesc("Choose the layout shown when Cadence Calendar opens. You can also switch with the icon in the calendar header.")
+            .addDropdown((dropdown) => {
+            dropdown.addOption("month", "Month");
+            dropdown.addOption("week", "Week");
+            dropdown.setValue(this.plugin.options.viewMode);
+            dropdown.onChange(async (value) => {
+                await this.plugin.writeOptions(() => ({
+                    viewMode: value,
+                }));
+            });
+        });
     }
     addCtrlClickSetting() {
         new obsidian.Setting(this.containerEl)
@@ -9550,7 +9581,7 @@ var root$5 = from_html(`<div><svg focusable="false" role="img" xmlns="http://www
 
 const $$css$4 = {
 	hash: 'svelte-5izuqg',
-	code: '.arrow.svelte-5izuqg {align-items:center;cursor:pointer;display:flex;justify-content:center;width:24px;}.arrow.svelte-5izuqg:hover {opacity:0.7;}.arrow.is-mobile.svelte-5izuqg {width:32px;}.right.svelte-5izuqg {transform:rotate(180deg);}.arrow.svelte-5izuqg svg:where(.svelte-5izuqg) {color:var(--color-arrow);height:16px;width:16px;}'
+	code: '.arrow.svelte-5izuqg {align-items:center;cursor:pointer;display:inline-flex;justify-content:center;line-height:1;width:24px;}.arrow.svelte-5izuqg:hover {opacity:0.7;}.arrow.is-mobile.svelte-5izuqg {width:32px;}.right.svelte-5izuqg {transform:rotate(180deg);}.arrow.svelte-5izuqg svg:where(.svelte-5izuqg) {color:var(--color-arrow);height:16px;width:16px;}'
 };
 
 function Arrow($$anchor, $$props) {
@@ -9573,23 +9604,32 @@ function Arrow($$anchor, $$props) {
 
 delegate(['click']);
 
-var root$4 = from_html(`<span class="divider svelte-hunw0s">•</span>`);
-var root_1$3 = from_html(`<span> </span> <!>`, 1);
-var root_2$1 = from_html(`<div class="quarters svelte-hunw0s"></div>`);
-var root_3$1 = from_html(`<div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svelte-hunw0s"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg></div>`);
-var root_4$1 = from_html(`<div class="reset-button svelte-hunw0s"> </div>`);
-var root_5$1 = from_html(`<div><div class="title-container svelte-hunw0s"><h3 class="title svelte-hunw0s"><span class="month svelte-hunw0s"> </span> <span class="year svelte-hunw0s"> </span></h3> <!></div> <div class="right-nav svelte-hunw0s"><!> <!> <!> <!></div></div>`);
+var root$4 = from_html(`<h3 class="title week-title svelte-hunw0s"><span class="month svelte-hunw0s"> </span><span class="year svelte-hunw0s"> </span></h3>`);
+var root_1$3 = from_html(`<h3 class="title svelte-hunw0s"><span class="month svelte-hunw0s"> </span><span class="year svelte-hunw0s"> </span></h3>`);
+var root_2$1 = from_html(`<div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svelte-hunw0s"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg></div>`);
+var root_3$1 = from_html(`<div class="reset-button svelte-hunw0s"> </div>`);
+var root_4$1 = from_html(`<div><div class="week-sublabel svelte-hunw0s">This Week</div></div>`);
+var root_5$1 = from_html(`<span class="divider svelte-hunw0s">•</span>`);
+var root_6$1 = from_html(`<span> </span> <!>`, 1);
+var root_7$1 = from_html(`<div class="sub-header svelte-hunw0s"><div class="quarters svelte-hunw0s"></div></div>`);
+var root_8 = from_html(`<div class="calendar-header"><div><div class="title-container svelte-hunw0s"><!></div> <div class="right-nav svelte-hunw0s"><!> <div class="view-toggle svelte-hunw0s" role="group" aria-label="Calendar view"><button type="button" title="Month view">Mᴏ</button> <button type="button" title="Week view">Wᴋ</button></div> <!> <!> <!></div></div> <!></div>`);
 
 const $$css$3 = {
 	hash: 'svelte-hunw0s',
-	code: '.nav.svelte-hunw0s {align-items:center;display:flex;margin:0.6em 0 1em;padding:0 8px;width:100%;}.nav.is-mobile.svelte-hunw0s {\r\n    /* Match desktop left padding so the mobile title aligns with the grid. */padding:0 0 0 8px;}.title-container.svelte-hunw0s {display:flex;flex-direction:column;align-items:flex-start;}.title.svelte-hunw0s {color:var(--color-text-title);font-size:1.5em;margin:0;}.is-mobile.svelte-hunw0s .title:where(.svelte-hunw0s) {font-size:1.3em;}.month.svelte-hunw0s {font-weight:500;text-transform:capitalize;cursor:pointer;}.year.svelte-hunw0s {color:var(--interactive-accent);cursor:pointer;}.quarters.svelte-hunw0s {display:flex;align-items:center;margin-top:4px;\r\n    /* 2px optical nudge to the right — sits the cluster just inside the\r\n       month title\'s left edge instead of perfectly flush, which reads\r\n       better at this font size. Not restoring the old per-item margins\r\n       or container padding (those caused the larger 6px indent). */margin-left:2px;\r\n    /* gap replaces per-item horizontal margins + the container\'s side\r\n       padding. The previous setup gave Q1 a 4px margin-left plus 2px of\r\n       container padding-left, leaving the row visually indented relative\r\n       to the month title (which has margin: 0). Using gap puts the first\r\n       child flush at the container\'s left edge while preserving the same\r\n       6px spacing between adjacent items (was 4px quarter-margin + 2px\r\n       divider-margin = 6px between each quarter and its divider). */gap:6px;}.quarter.svelte-hunw0s {font-size:0.6em;color:var(--text-muted);cursor:pointer;}.quarter.active.svelte-hunw0s {color:var(--interactive-accent);font-weight:bold;\r\n    /* Background / pill defenses against theme overrides (e.g. Minimal)\r\n       live in styles.css with a `#calendar-container` ID prefix — Svelte\'s\r\n       component-scoped specificity (0,4,0) isn\'t enough to beat a theme\r\n       targeting generic `.active` with higher specificity. */}.divider.svelte-hunw0s {font-size:0.4em;color:var(--text-muted);}.right-nav.svelte-hunw0s {display:flex;justify-content:center;align-items:center;margin-left:auto;}.reset-button.svelte-hunw0s {cursor:pointer;border-radius:4px;color:var(--text-muted);font-size:0.7em;font-weight:600;letter-spacing:1px;margin:0 4px;padding:0 4px;text-transform:uppercase;}.reset-button.svelte-hunw0s:hover {opacity:0.7;}.year-overview-toggle.svelte-hunw0s {align-items:center;cursor:pointer;display:flex;justify-content:center;width:24px;}.year-overview-toggle.svelte-hunw0s:hover {opacity:0.7;}.is-mobile.svelte-hunw0s .year-overview-toggle:where(.svelte-hunw0s) {width:32px;}\r\n\r\n  /* Light grey when off, brightening to the normal (white-ish) text color\r\n     when the panel is open, so the icon\'s state is legible without color. */.year-overview-toggle.svelte-hunw0s svg:where(.svelte-hunw0s) {color:var(--text-muted);height:15px;width:15px;}.year-overview-toggle.active.svelte-hunw0s svg:where(.svelte-hunw0s) {color:var(--text-normal);}'
+	code: '.nav.svelte-hunw0s {align-items:center;display:flex;gap:6px;justify-content:space-between;margin:0.6em 0 0;padding:0 8px;width:100%;}.nav.is-mobile.svelte-hunw0s {\n    /* Match desktop left padding so the mobile title aligns with the grid. */padding:0 0 0 8px;}.title-container.svelte-hunw0s {align-items:center;display:flex;min-width:0;}.sub-header.svelte-hunw0s {margin:2px 8px 8px;}.sub-header.hidden.svelte-hunw0s {display:none;}.title.svelte-hunw0s {color:var(--color-text-title);font-size:1.5em;line-height:1.2;margin:0;}.title.week-title.svelte-hunw0s {font-size:1.05rem;white-space:nowrap;}.is-mobile.svelte-hunw0s .title:where(.svelte-hunw0s) {font-size:1.3em;}.is-mobile.svelte-hunw0s .title.week-title:where(.svelte-hunw0s) {font-size:1.05rem;}.month.svelte-hunw0s {font-weight:500;text-transform:capitalize;cursor:pointer;}.year.svelte-hunw0s {color:var(--interactive-accent);cursor:pointer;}.quarters.svelte-hunw0s {display:flex;align-items:center;margin-top:0;\n    /* 2px optical nudge to the right — sits the cluster just inside the\n       month title\'s left edge instead of perfectly flush, which reads\n       better at this font size. Not restoring the old per-item margins\n       or container padding (those caused the larger 6px indent). */margin-left:2px;\n    /* gap replaces per-item horizontal margins + the container\'s side\n       padding. The previous setup gave Q1 a 4px margin-left plus 2px of\n       container padding-left, leaving the row visually indented relative\n       to the month title (which has margin: 0). Using gap puts the first\n       child flush at the container\'s left edge while preserving the same\n       6px spacing between adjacent items (was 4px quarter-margin + 2px\n       divider-margin = 6px between each quarter and its divider). */gap:6px;}.quarter.svelte-hunw0s {font-size:0.6em;color:var(--text-muted);cursor:pointer;}.quarter.active.svelte-hunw0s {color:var(--interactive-accent);font-weight:bold;\n    /* Background / pill defenses against theme overrides (e.g. Minimal)\n       live in styles.css with a `#calendar-container` ID prefix — Svelte\'s\n       component-scoped specificity (0,4,0) isn\'t enough to beat a theme\n       targeting generic `.active` with higher specificity. */}.divider.svelte-hunw0s {font-size:0.4em;color:var(--text-muted);}.right-nav.svelte-hunw0s {align-items:center;display:flex;justify-content:flex-end;margin-left:0;}.reset-button.svelte-hunw0s {align-items:center;display:inline-flex;line-height:1;cursor:pointer;border-radius:4px;color:var(--text-muted);font-size:0.7em;font-weight:600;letter-spacing:1px;margin:0 4px;padding:0 4px;text-transform:uppercase;}.reset-button.svelte-hunw0s:hover {opacity:0.7;}.week-sublabel.svelte-hunw0s {color:var(--text-muted);cursor:default;font-size:0.7em;margin:0;padding-left:2px;}.view-toggle.svelte-hunw0s {align-items:center;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:999px;display:inline-flex;gap:2px;margin-right:4px;padding:2px;}.view-toggle.svelte-hunw0s button:where(.svelte-hunw0s) {background:transparent;border:0;border-radius:999px;box-shadow:none;color:var(--text-muted);cursor:pointer;font-size:11px;font-weight:600;height:auto;line-height:1.2;min-height:0;padding:2px 9px;}.view-toggle.svelte-hunw0s button:where(.svelte-hunw0s):hover {color:var(--text-normal);}.view-toggle.svelte-hunw0s button.active:where(.svelte-hunw0s) {background:var(--interactive-accent);color:var(--text-on-accent);margin:2px;}.year-overview-toggle.svelte-hunw0s {align-items:center;cursor:pointer;display:flex;justify-content:center;width:24px;}.year-overview-toggle.svelte-hunw0s:hover {opacity:0.7;}.is-mobile.svelte-hunw0s .year-overview-toggle:where(.svelte-hunw0s) {width:32px;}\n\n  /* Light grey when off, brightening to the normal (white-ish) text color\n     when the panel is open, so the icon\'s state is legible without color. */.year-overview-toggle.svelte-hunw0s svg:where(.svelte-hunw0s) {color:var(--text-muted);height:15px;width:15px;}.year-overview-toggle.active.svelte-hunw0s svg:where(.svelte-hunw0s) {color:var(--text-normal);}'
 };
 
 function Nav($$anchor, $$props) {
 	push($$props, true);
 	append_styles$1($$anchor, $$css$3);
 
-	let // Optional Today-click callback. When provided, the Today button jumps to
+	let viewMode = prop($$props, 'viewMode', 3, "month"),
+		onToggleView = prop($$props, 'onToggleView', 3, undefined),
+		weekStart = prop($$props, 'weekStart', 19, () => $$props.today),
+		weekEnd = prop($$props, 'weekEnd', 19, () => $$props.today);
+		prop($$props, 'weekNum', 3, 0);
+		let isCurrentWeek = prop($$props, 'isCurrentWeek', 3, false),
+		// Optional Today-click callback. When provided, the Today button jumps to
 		// the current month *and* invokes this with `today` so the parent can open
 		// or create today's daily note via the same path day-cell clicks use.
 		onClickToday = prop($$props, 'onClickToday', 3, undefined),
@@ -9622,67 +9662,99 @@ function Nav($$anchor, $$props) {
 	}
 
 	const currentQuarter = user_derived(() => getCurrentQuarter($$props.displayedMonth.month()));
-	var div = root_5$1();
-	let classes;
+
+	const weekTitle = user_derived(() => {
+		if (viewMode() !== "week") return { range: "", year: "" };
+
+		// A week crossing years carries both years inline; a week crossing only
+		// a month boundary omits spaces around the dash to stay on one line.
+		if (weekStart().year() !== weekEnd().year()) {
+			return {
+				range: `${weekStart().format("MMM D, YYYY")}–${weekEnd().format("MMM D, YYYY")}`,
+				year: ""
+			};
+		}
+
+		if (weekStart().isSame(weekEnd(), "month")) {
+			return {
+				range: `${weekStart().format("MMM D")}–${weekEnd().format("D")}`,
+				year: `, ${weekEnd().format("YYYY")}`
+			};
+		}
+
+		return {
+			range: `${weekStart().format("MMM D")}–${weekEnd().format("MMM D")}`,
+			year: `, ${weekEnd().format("YYYY")}`
+		};
+	});
+
+	var div = root_8();
 	var div_1 = child(div);
-	var h3 = child(div_1);
-	var span = child(h3);
-	var text = child(span);
-
-	var span_1 = sibling(span, 2);
-	var text_1 = child(span_1);
-
-	var node = sibling(h3, 2);
+	let classes;
+	var div_2 = child(div_1);
+	var node = child(div_2);
 
 	{
-		var consequent_1 = ($$anchor) => {
-			var div_2 = root_2$1();
+		var consequent = ($$anchor) => {
+			var h3 = root$4();
+			var span = child(h3);
+			var text = child(span);
 
-			each(div_2, 20, () => [1, 2, 3, 4], index, ($$anchor, quarter, index) => {
-				var fragment = root_1$3();
-				var span_2 = first_child(fragment);
-				let classes_1;
-				var text_2 = child(span_2);
+			var span_1 = sibling(span);
+			var text_1 = child(span_1);
 
-				var node_1 = sibling(span_2, 2);
-
-				{
-					var consequent = ($$anchor) => {
-						var span_3 = root$4();
-
-						append($$anchor, span_3);
-					};
-
-					if_block(node_1, ($$render) => {
-						if (index < 3) $$render(consequent);
-					});
-				}
-
-				template_effect(() => {
-					classes_1 = set_class(span_2, 1, 'quarter svelte-hunw0s', null, classes_1, { active: quarter === get(currentQuarter) });
-					set_text(text_2, `Q${quarter ?? ''}`);
-				});
-
-				delegated('click', span_2, (event) => $$props.onClickQuarter(getStartOfQuarter($$props.displayedMonth.year(), quarter), isMetaPressed(event)));
-				append($$anchor, fragment);
+			template_effect(() => {
+				set_text(text, get(weekTitle).range);
+				set_text(text_1, get(weekTitle).year);
 			});
-			append($$anchor, div_2);
+
+			append($$anchor, h3);
+		};
+
+		var alternate = ($$anchor) => {
+			var h3_1 = root_1$3();
+			var span_2 = child(h3_1);
+			var text_2 = child(span_2);
+
+			var span_3 = sibling(span_2);
+			var text_3 = child(span_3);
+
+			template_effect(
+				($0, $1) => {
+					set_text(text_2, $0);
+					set_text(text_3, $1);
+				},
+				[
+					() => $$props.displayedMonth.format("MMM"),
+					() => $$props.displayedMonth.format("YYYY")
+				]
+			);
+
+			delegated('click', span_2, (event) => {
+				$$props.onClickMonth($$props.displayedMonth, isMetaPressed(event));
+			});
+
+			delegated('click', span_3, (event) => {
+				$$props.onClickYear($$props.displayedMonth, isMetaPressed(event));
+			});
+
+			append($$anchor, h3_1);
 		};
 
 		if_block(node, ($$render) => {
-			if ($$props.quarterVisible) $$render(consequent_1);
+			if (viewMode() === "week") $$render(consequent); else $$render(alternate, -1);
 		});
 	}
 
-	var div_3 = sibling(div_1, 2);
-	var node_2 = child(div_3);
+	var div_3 = sibling(div_2, 2);
+	var node_1 = child(div_3);
 
 	{
-		var consequent_2 = ($$anchor) => {
-			var div_4 = root_3$1();
-			let classes_2;
+		var consequent_1 = ($$anchor) => {
+			var div_4 = root_2$1();
+			let classes_1;
 
-			template_effect(() => classes_2 = set_class(div_4, 1, 'year-overview-toggle svelte-hunw0s', null, classes_2, { active: yearOverviewOpen() }));
+			template_effect(() => classes_1 = set_class(div_4, 1, 'year-overview-toggle svelte-hunw0s', null, classes_1, { active: yearOverviewOpen() }));
 
 			delegated('click', div_4, (e) => {
 				e.stopPropagation();
@@ -9692,68 +9764,125 @@ function Nav($$anchor, $$props) {
 			append($$anchor, div_4);
 		};
 
-		if_block(node_2, ($$render) => {
-			if (showYearOverviewButton()) $$render(consequent_2);
+		if_block(node_1, ($$render) => {
+			if (showYearOverviewButton()) $$render(consequent_1);
 		});
 	}
 
-	var node_3 = sibling(node_2, 2);
+	var div_5 = sibling(node_1, 2);
+	var button = child(div_5);
+	let classes_2;
+	var button_1 = sibling(button, 2);
+	let classes_3;
 
-	Arrow(node_3, {
+	var node_2 = sibling(div_5, 2);
+
+	Arrow(node_2, {
 		direction: 'left',
 		get onClick() {
-			return $$props.decrementDisplayedMonth;
+			return $$props.decrementPeriod;
 		}
 	});
 
-	var node_4 = sibling(node_3, 2);
+	var node_3 = sibling(node_2, 2);
 
 	{
-		var consequent_3 = ($$anchor) => {
-			var div_5 = root_4$1();
-			var text_3 = child(div_5);
-			template_effect(() => set_text(text_3, get(todayDisplayStr)));
+		var consequent_2 = ($$anchor) => {
+			var div_6 = root_3$1();
+			var text_4 = child(div_6);
+			template_effect(() => set_text(text_4, get(todayDisplayStr)));
 
-			delegated('click', div_5, () => {
+			delegated('click', div_6, () => {
 				$$props.resetDisplayedMonth();
 				onClickToday()?.($$props.today);
 			});
 
-			append($$anchor, div_5);
+			append($$anchor, div_6);
 		};
 
-		if_block(node_4, ($$render) => {
-			if (!isMobile || showTodayButtonOnMobile()) $$render(consequent_3);
+		if_block(node_3, ($$render) => {
+			if (!isMobile || showTodayButtonOnMobile()) $$render(consequent_2);
 		});
 	}
 
-	var node_5 = sibling(node_4, 2);
+	var node_4 = sibling(node_3, 2);
 
-	Arrow(node_5, {
+	Arrow(node_4, {
 		direction: 'right',
 		get onClick() {
-			return $$props.incrementDisplayedMonth;
+			return $$props.incrementPeriod;
 		}
 	});
 
-	template_effect(
-		($0, $1) => {
-			classes = set_class(div, 1, 'nav svelte-hunw0s', null, classes, { 'is-mobile': isMobile });
-			set_text(text, $0);
-			set_text(text_1, $1);
-		},
-		[
-			() => $$props.displayedMonth.format("MMM"),
-			() => $$props.displayedMonth.format("YYYY")
-		]
-	);
+	var node_5 = sibling(div_1, 2);
 
-	delegated('click', span, (event) => {
-		$$props.onClickMonth($$props.displayedMonth, isMetaPressed(event));
+	{
+		var consequent_3 = ($$anchor) => {
+			var div_7 = root_4$1();
+			let classes_4;
+
+			template_effect(() => {
+				classes_4 = set_class(div_7, 1, 'sub-header svelte-hunw0s', null, classes_4, { hidden: !isCurrentWeek() });
+				set_attribute(div_7, 'aria-hidden', !isCurrentWeek());
+			});
+
+			append($$anchor, div_7);
+		};
+
+		var consequent_5 = ($$anchor) => {
+			var div_8 = root_7$1();
+			var div_9 = child(div_8);
+
+			each(div_9, 20, () => [1, 2, 3, 4], index, ($$anchor, quarter, index) => {
+				var fragment = root_6$1();
+				var span_4 = first_child(fragment);
+				let classes_5;
+				var text_5 = child(span_4);
+
+				var node_6 = sibling(span_4, 2);
+
+				{
+					var consequent_4 = ($$anchor) => {
+						var span_5 = root_5$1();
+
+						append($$anchor, span_5);
+					};
+
+					if_block(node_6, ($$render) => {
+						if (index < 3) $$render(consequent_4);
+					});
+				}
+
+				template_effect(() => {
+					classes_5 = set_class(span_4, 1, 'quarter svelte-hunw0s', null, classes_5, { active: quarter === get(currentQuarter) });
+					set_text(text_5, `Q${quarter ?? ''}`);
+				});
+
+				delegated('click', span_4, (event) => $$props.onClickQuarter(getStartOfQuarter($$props.displayedMonth.year(), quarter), isMetaPressed(event)));
+				append($$anchor, fragment);
+			});
+			append($$anchor, div_8);
+		};
+
+		if_block(node_5, ($$render) => {
+			if (viewMode() === "week") $$render(consequent_3); else if ($$props.quarterVisible) $$render(consequent_5, 1);
+		});
+	}
+
+	template_effect(() => {
+		classes = set_class(div_1, 1, 'nav svelte-hunw0s', null, classes, { 'is-mobile': isMobile });
+		set_attribute(button, 'aria-pressed', viewMode() === "month");
+		classes_2 = set_class(button, 1, 'svelte-hunw0s', null, classes_2, { active: viewMode() === "month" });
+		set_attribute(button_1, 'aria-pressed', viewMode() === "week");
+		classes_3 = set_class(button_1, 1, 'svelte-hunw0s', null, classes_3, { active: viewMode() === "week" });
 	});
 
-	delegated('click', span_1, (event) => {
-		$$props.onClickYear($$props.displayedMonth, isMetaPressed(event));
+	delegated('click', button, () => {
+		if (viewMode() !== "month") onToggleView()?.();
+	});
+
+	delegated('click', button_1, () => {
+		if (viewMode() !== "week") onToggleView()?.();
 	});
 
 	append($$anchor, div);
@@ -9968,11 +10097,13 @@ var root_1 = from_html(`<col/>`);
 var root_2 = from_html(`<th class="week-num-heading svelte-1cv5gx">W</th>`);
 var root_3 = from_html(`<th> </th>`);
 var root_4 = from_html(`<tr><!><!><!></tr>`);
-var root_5 = from_html(`<div id="calendar-container"><!> <!> <table class="calendar svelte-1cv5gx"><colgroup><!><!></colgroup><thead><tr><!><!><!></tr></thead><tbody></tbody></table></div>`);
+var root_5 = from_html(`<table class="calendar svelte-1cv5gx"><colgroup><!><!></colgroup><thead><tr><!><!><!></tr></thead><tbody></tbody></table>`);
+var root_6 = from_html(`<table class="calendar week-view svelte-1cv5gx"><colgroup><col/><!></colgroup><thead><tr><th class="week-num-heading svelte-1cv5gx">W</th><!></tr></thead><tbody><tr><!><!></tr></tbody></table>`);
+var root_7 = from_html(`<div id="calendar-container"><!> <!> <!></div>`);
 
 const $$css = {
 	hash: 'svelte-1cv5gx',
-	code: '.container.svelte-1cv5gx {--color-background-heading: transparent;--color-background-day: transparent;--color-background-weeknum: transparent;--color-background-weekend: var(--color-base-25);--color-dot: var(--text-muted);--color-arrow: var(--text-muted);--color-button: var(--text-muted);--color-text-title: var(--text-normal);--color-text-heading: var(--text-muted);--color-text-day: var(--text-normal);--color-text-today: var(--interactive-accent);--color-text-weeknum: var(--text-muted);}.container.svelte-1cv5gx {padding:0 8px;\r\n    /* Anchor the absolutely-positioned year-overview popup. */position:relative;user-select:none;}.container.is-mobile.svelte-1cv5gx {padding:0;}\r\n\r\n  /* Year-overview popup: floats over the calendar, anchored under the\r\n     header history button. Click-away closes it (handled in script). */.year-popup.svelte-1cv5gx {position:absolute;top:42px;right:8px;z-index:20;width:220px;max-width:calc(100% - 16px);padding:8px 10px 10px;background-color:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:8px;box-shadow:var(--shadow-s);}.container.is-mobile.svelte-1cv5gx .year-popup:where(.svelte-1cv5gx) {right:0;}th.svelte-1cv5gx {text-align:center;}.calendar.svelte-1cv5gx {border-collapse:collapse;table-layout:fixed;width:100%;}.week-num-heading.svelte-1cv5gx {width:10%;}th.svelte-1cv5gx {background-color:var(--color-background-heading);color:var(--color-text-heading);font-size:0.6em;letter-spacing:1px;padding:4px;text-transform:uppercase;}'
+	code: '.container.svelte-1cv5gx {--color-background-heading: transparent;--color-background-day: transparent;--color-background-weeknum: transparent;--color-background-weekend: var(--color-base-25);--color-dot: var(--text-muted);--color-arrow: var(--text-muted);--color-button: var(--text-muted);--color-text-title: var(--text-normal);--color-text-heading: var(--text-muted);--color-text-day: var(--text-normal);--color-text-today: var(--interactive-accent);--color-text-weeknum: var(--text-muted);}.container.svelte-1cv5gx {padding:0 8px;\n    /* Anchor the absolutely-positioned year-overview popup. */position:relative;user-select:none;}.container.is-mobile.svelte-1cv5gx {padding:0;}\n\n  /* Year-overview popup: floats over the calendar, anchored under the\n     header history button. Click-away closes it (handled in script). */.year-popup.svelte-1cv5gx {position:absolute;top:42px;right:8px;z-index:20;width:220px;max-width:calc(100% - 16px);padding:8px 10px 10px;background-color:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:8px;box-shadow:var(--shadow-s);}.container.is-mobile.svelte-1cv5gx .year-popup:where(.svelte-1cv5gx) {right:0;}th.svelte-1cv5gx {text-align:center;}.calendar.svelte-1cv5gx {border-collapse:collapse;table-layout:fixed;width:100%;}.week-num-heading.svelte-1cv5gx {width:10%;}th.svelte-1cv5gx {background-color:var(--color-background-heading);color:var(--color-text-heading);font-size:0.6em;letter-spacing:1px;padding:4px;text-transform:uppercase;}'
 };
 
 function Calendar$1($$anchor, $$props) {
@@ -9995,6 +10126,9 @@ function Calendar$1($$anchor, $$props) {
 		// per-month "has any note" dot.
 		showYearOverview = prop($$props, 'showYearOverview', 3, false),
 		monthsWithNotes = prop($$props, 'monthsWithNotes', 19, () => []),
+		viewMode = prop($$props, 'viewMode', 3, "month"),
+		onViewModeChange = prop($$props, 'onViewModeChange', 3, undefined),
+		weekStartOption = prop($$props, 'weekStartOption', 3, "locale"),
 		// External sources (all optional)
 		sources = prop($$props, 'sources', 19, () => []),
 		selectedSecondDailyId = prop($$props, 'selectedSecondDailyId', 3, null),
@@ -10037,6 +10171,35 @@ function Calendar$1($$anchor, $$props) {
 
 	const daysOfWeek = user_derived(() => getDaysOfWeek($$props.localeData));
 
+	// Week View derives its 7-day window from the same displayed date anchor
+	// the month grid uses, using the plugin's configured week-start setting.
+	// `today` is read here only as a reactivity trigger for day rollover; the
+	// actual key is computed from a fresh `moment()` so no earlier navigation
+	// or helper can leave a stale/mutated Moment object cached in this derived.
+	const weekData = user_derived(() => {
+		void $$props.localeData;
+		void today();
+
+		const start = getWeekStartForSetting(displayedMonth(), weekStartOption());
+		const days = Array.from({ length: 7 }, (_, i) => start.clone().add(i, "days"));
+		const end = start.clone().add(6, "days");
+		const todayKey = moment().format("YYYY-MM-DD");
+		const startKey = start.format("YYYY-MM-DD");
+		const endKey = end.format("YYYY-MM-DD");
+
+		return {
+			start,
+			end,
+			days,
+			num: start.week(),
+			isCurrent: todayKey >= startKey && todayKey <= endKey
+		};
+	});
+
+	// Direct primitive so the Nav `{#if isCurrentWeek}` block reads a
+	// first-class reactive value rather than a property of a derived object.
+	const isCurrentWeek = user_derived(() => get(weekData).isCurrent);
+
 	// Exports
 	function incrementDisplayedMonth() {
 		displayedMonth(displayedMonth().clone().add(1, "month"));
@@ -10050,13 +10213,27 @@ function Calendar$1($$anchor, $$props) {
 		displayedMonth(today().clone());
 	}
 
+	function incrementDisplayedWeek() {
+		displayedMonth(displayedMonth().clone().add(1, "week"));
+	}
+
+	function decrementDisplayedWeek() {
+		displayedMonth(displayedMonth().clone().subtract(1, "week"));
+	}
+
+	function toggleViewMode() {
+		onViewModeChange() === null || onViewModeChange() === void 0
+			? void 0
+			: onViewModeChange()(viewMode() === "month" ? "week" : "month");
+	}
+
 	var $$exports = {
 		incrementDisplayedMonth,
 		decrementDisplayedMonth,
 		resetDisplayedMonth
 	};
 
-	var div = root_5();
+	var div = root_7();
 
 	event('click', $window, () => {
 		if (get(yearOverviewOpen)) set(yearOverviewOpen, false);
@@ -10065,50 +10242,82 @@ function Calendar$1($$anchor, $$props) {
 	let classes;
 	var node = child(div);
 
-	Nav(node, {
-		get today() {
-			return today();
-		},
+	{
+		let $0 = user_derived(() => viewMode() === "week" ? incrementDisplayedWeek : incrementDisplayedMonth);
+		let $1 = user_derived(() => viewMode() === "week" ? decrementDisplayedWeek : decrementDisplayedMonth);
 
-		get displayedMonth() {
-			return displayedMonth();
-		},
-		incrementDisplayedMonth,
-		decrementDisplayedMonth,
-		get quarterVisible() {
-			return $$props.quarterVisible;
-		},
+		Nav(node, {
+			get today() {
+				return today();
+			},
 
-		get onClickMonth() {
-			return $$props.onClickMonth;
-		},
+			get displayedMonth() {
+				return displayedMonth();
+			},
 
-		get onClickYear() {
-			return $$props.onClickYear;
-		},
+			get incrementPeriod() {
+				return get($0);
+			},
 
-		get onClickQuarter() {
-			return $$props.onClickQuarter;
-		},
+			get decrementPeriod() {
+				return get($1);
+			},
 
-		get onClickToday() {
-			return onClickToday();
-		},
+			get viewMode() {
+				return viewMode();
+			},
+			onToggleView: toggleViewMode,
+			get weekStart() {
+				return get(weekData).start;
+			},
 
-		get showTodayButtonOnMobile() {
-			return showTodayButtonOnMobile();
-		},
+			get weekEnd() {
+				return get(weekData).end;
+			},
 
-		get showYearOverviewButton() {
-			return showYearOverview();
-		},
+			get weekNum() {
+				return get(weekData).num;
+			},
 
-		get yearOverviewOpen() {
-			return get(yearOverviewOpen);
-		},
-		onToggleYearOverview: toggleYearOverview,
-		resetDisplayedMonth
-	});
+			get isCurrentWeek() {
+				return get(isCurrentWeek);
+			},
+
+			get quarterVisible() {
+				return $$props.quarterVisible;
+			},
+
+			get onClickMonth() {
+				return $$props.onClickMonth;
+			},
+
+			get onClickYear() {
+				return $$props.onClickYear;
+			},
+
+			get onClickQuarter() {
+				return $$props.onClickQuarter;
+			},
+
+			get onClickToday() {
+				return onClickToday();
+			},
+
+			get showTodayButtonOnMobile() {
+				return showTodayButtonOnMobile();
+			},
+
+			get showYearOverviewButton() {
+				return showYearOverview();
+			},
+
+			get yearOverviewOpen() {
+				return get(yearOverviewOpen);
+			},
+			onToggleYearOverview: toggleYearOverview,
+			resetDisplayedMonth
+		});
+	}
 
 	var node_1 = sibling(node, 2);
 
@@ -10142,217 +10351,348 @@ function Calendar$1($$anchor, $$props) {
 		});
 	}
 
-	var table = sibling(node_1, 2);
-	var colgroup = child(table);
-	var node_3 = child(colgroup);
+	var node_3 = sibling(node_1, 2);
 
 	{
-		var consequent_1 = ($$anchor) => {
-			var col = root_1();
+		var consequent_6 = ($$anchor) => {
+			var table = root_5();
+			var colgroup = child(table);
+			var node_4 = child(colgroup);
 
-			append($$anchor, col);
-		};
-
-		if_block(node_3, ($$render) => {
-			if (showWeekNums() && !showWeekNumsRight()) $$render(consequent_1);
-		});
-	}
-
-	var node_4 = sibling(node_3);
-
-	each(node_4, 17, () => get(month)[1].days, index, ($$anchor, _date) => {
-		var col_1 = root_1();
-
-		append($$anchor, col_1);
-	});
-
-	var thead = sibling(colgroup);
-	var tr = child(thead);
-	var node_5 = child(tr);
-
-	{
-		var consequent_2 = ($$anchor) => {
-			var th = root_2();
-
-			append($$anchor, th);
-		};
-
-		if_block(node_5, ($$render) => {
-			if (showWeekNums() && !showWeekNumsRight()) $$render(consequent_2);
-		});
-	}
-
-	var node_6 = sibling(node_5);
-
-	each(node_6, 17, () => get(daysOfWeek), index, ($$anchor, dayOfWeek, i) => {
-		var th_1 = root_3();
-		let classes_1;
-		var text = child(th_1);
-
-		template_effect(
-			($0) => {
-				classes_1 = set_class(th_1, 1, 'svelte-1cv5gx', null, classes_1, $0);
-				set_text(text, get(dayOfWeek));
-			},
-			[
-				() => ({ weekend: isWeekend(get(month)[1].days[i], weekendDays()) })
-			]
-		);
-
-		append($$anchor, th_1);
-	});
-
-	var node_7 = sibling(node_6);
-
-	{
-		var consequent_3 = ($$anchor) => {
-			var th_2 = root_2();
-
-			append($$anchor, th_2);
-		};
-
-		if_block(node_7, ($$render) => {
-			if (showWeekNums() && showWeekNumsRight()) $$render(consequent_3);
-		});
-	}
-
-	var tbody = sibling(thead);
-
-	each(tbody, 21, () => get(month), (week) => week.weekNum, ($$anchor, week) => {
-		var tr_1 = root_4();
-		var node_8 = child(tr_1);
-
-		{
-			var consequent_4 = ($$anchor) => {
-				{
-					let $0 = user_derived(() => getWeeklyMetadata(sources(), get(week).days[0], today(), revision()));
-					let $1 = user_derived(() => !showWeekNumsRight());
-
-					WeekNum($$anchor, spread_props(() => get(week), {
-						get metadata() {
-							return get($0);
-						},
-
-						get onClick() {
-							return $$props.onClickWeek;
-						},
-
-						get onContextMenu() {
-							return $$props.onContextMenuWeek;
-						},
-
-						get onHover() {
-							return $$props.onHoverWeek;
-						},
-
-						get selectedId() {
-							return $$props.selectedId;
-						},
-
-						get gridRight() {
-							return get($1);
-						}
-					}));
-				}
-			};
-
-			if_block(node_8, ($$render) => {
-				if (showWeekNums() && !showWeekNumsRight()) $$render(consequent_4);
-			});
-		}
-
-		var node_9 = sibling(node_8);
-
-		each(node_9, 17, () => get(week).days, (day) => day.format(), ($$anchor, day) => {
 			{
-				let $0 = user_derived(() => getDailyMetadata(sources(), get(day), today(), revision()));
+				var consequent_1 = ($$anchor) => {
+					var col = root_1();
 
-				Day($$anchor, {
-					get date() {
-						return get(day);
+					append($$anchor, col);
+				};
+
+				if_block(node_4, ($$render) => {
+					if (showWeekNums() && !showWeekNumsRight()) $$render(consequent_1);
+				});
+			}
+
+			var node_5 = sibling(node_4);
+
+			each(node_5, 17, () => get(month)[1].days, index, ($$anchor, _date) => {
+				var col_1 = root_1();
+
+				append($$anchor, col_1);
+			});
+
+			var thead = sibling(colgroup);
+			var tr = child(thead);
+			var node_6 = child(tr);
+
+			{
+				var consequent_2 = ($$anchor) => {
+					var th = root_2();
+
+					append($$anchor, th);
+				};
+
+				if_block(node_6, ($$render) => {
+					if (showWeekNums() && !showWeekNumsRight()) $$render(consequent_2);
+				});
+			}
+
+			var node_7 = sibling(node_6);
+
+			each(node_7, 17, () => get(daysOfWeek), index, ($$anchor, dayOfWeek, i) => {
+				var th_1 = root_3();
+				let classes_1;
+				var text = child(th_1);
+
+				template_effect(
+					($0) => {
+						classes_1 = set_class(th_1, 1, 'svelte-1cv5gx', null, classes_1, $0);
+						set_text(text, get(dayOfWeek));
+					},
+					[
+						() => ({ weekend: isWeekend(get(month)[1].days[i], weekendDays()) })
+					]
+				);
+
+				append($$anchor, th_1);
+			});
+
+			var node_8 = sibling(node_7);
+
+			{
+				var consequent_3 = ($$anchor) => {
+					var th_2 = root_2();
+
+					append($$anchor, th_2);
+				};
+
+				if_block(node_8, ($$render) => {
+					if (showWeekNums() && showWeekNumsRight()) $$render(consequent_3);
+				});
+			}
+
+			var tbody = sibling(thead);
+
+			each(tbody, 21, () => get(month), (week) => week.weekNum, ($$anchor, week) => {
+				var tr_1 = root_4();
+				var node_9 = child(tr_1);
+
+				{
+					var consequent_4 = ($$anchor) => {
+						{
+							let $0 = user_derived(() => getWeeklyMetadata(sources(), get(week).days[0], today(), revision()));
+							let $1 = user_derived(() => !showWeekNumsRight());
+
+							WeekNum($$anchor, spread_props(() => get(week), {
+								get metadata() {
+									return get($0);
+								},
+
+								get onClick() {
+									return $$props.onClickWeek;
+								},
+
+								get onContextMenu() {
+									return $$props.onContextMenuWeek;
+								},
+
+								get onHover() {
+									return $$props.onHoverWeek;
+								},
+
+								get selectedId() {
+									return $$props.selectedId;
+								},
+
+								get gridRight() {
+									return get($1);
+								}
+							}));
+						}
+					};
+
+					if_block(node_9, ($$render) => {
+						if (showWeekNums() && !showWeekNumsRight()) $$render(consequent_4);
+					});
+				}
+
+				var node_10 = sibling(node_9);
+
+				each(node_10, 17, () => get(week).days, (day) => day.format(), ($$anchor, day) => {
+					{
+						let $0 = user_derived(() => getDailyMetadata(sources(), get(day), today(), revision()));
+
+						Day($$anchor, {
+							get date() {
+								return get(day);
+							},
+
+							get today() {
+								return today();
+							},
+
+							get displayedMonth() {
+								return displayedMonth();
+							},
+
+							get weekendDays() {
+								return weekendDays();
+							},
+
+							get onClick() {
+								return $$props.onClickDay;
+							},
+
+							get onContextMenu() {
+								return $$props.onContextMenuDay;
+							},
+
+							get onHover() {
+								return $$props.onHoverDay;
+							},
+
+							get metadata() {
+								return get($0);
+							},
+
+							get selectedId() {
+								return $$props.selectedId;
+							},
+
+							get selectedSecondDailyId() {
+								return selectedSecondDailyId();
+							}
+						});
+					}
+				});
+
+				var node_11 = sibling(node_10);
+
+				{
+					var consequent_5 = ($$anchor) => {
+						{
+							let $0 = user_derived(() => getWeeklyMetadata(sources(), get(week).days[0], today(), revision()));
+							let $1 = user_derived(() => !showWeekNumsRight());
+
+							WeekNum($$anchor, spread_props(() => get(week), {
+								get metadata() {
+									return get($0);
+								},
+
+								get onClick() {
+									return $$props.onClickWeek;
+								},
+
+								get onContextMenu() {
+									return $$props.onContextMenuWeek;
+								},
+
+								get onHover() {
+									return $$props.onHoverWeek;
+								},
+
+								get selectedId() {
+									return $$props.selectedId;
+								},
+
+								get gridRight() {
+									return get($1);
+								}
+							}));
+						}
+					};
+
+					if_block(node_11, ($$render) => {
+						if (showWeekNums() && showWeekNumsRight()) $$render(consequent_5);
+					});
+				}
+				append($$anchor, tr_1);
+			});
+			append($$anchor, table);
+		};
+
+		var alternate = ($$anchor) => {
+			var table_1 = root_6();
+			var colgroup_1 = child(table_1);
+			var node_12 = sibling(child(colgroup_1));
+
+			each(node_12, 17, () => get(weekData).days, index, ($$anchor, _date) => {
+				var col_2 = root_1();
+
+				append($$anchor, col_2);
+			});
+
+			var thead_1 = sibling(colgroup_1);
+			var tr_2 = child(thead_1);
+			var node_13 = sibling(child(tr_2));
+
+			each(node_13, 17, () => get(daysOfWeek), index, ($$anchor, dayOfWeek, i) => {
+				var th_3 = root_3();
+				let classes_2;
+				var text_1 = child(th_3);
+
+				template_effect(
+					($0) => {
+						classes_2 = set_class(th_3, 1, 'svelte-1cv5gx', null, classes_2, $0);
+						set_text(text_1, get(dayOfWeek));
+					},
+					[
+						() => ({ weekend: isWeekend(get(weekData).days[i], weekendDays()) })
+					]
+				);
+
+				append($$anchor, th_3);
+			});
+
+			var tbody_1 = sibling(thead_1);
+			var tr_3 = child(tbody_1);
+			var node_14 = child(tr_3);
+
+			{
+				let $0 = user_derived(() => getWeeklyMetadata(sources(), get(weekData).days[0], today(), revision()));
+
+				WeekNum(node_14, {
+					get weekNum() {
+						return get(weekData).num;
 					},
 
-					get today() {
-						return today();
-					},
-
-					get displayedMonth() {
-						return displayedMonth();
-					},
-
-					get weekendDays() {
-						return weekendDays();
-					},
-
-					get onClick() {
-						return $$props.onClickDay;
-					},
-
-					get onContextMenu() {
-						return $$props.onContextMenuDay;
-					},
-
-					get onHover() {
-						return $$props.onHoverDay;
+					get days() {
+						return get(weekData).days;
 					},
 
 					get metadata() {
 						return get($0);
 					},
 
+					get onClick() {
+						return $$props.onClickWeek;
+					},
+
+					get onContextMenu() {
+						return $$props.onContextMenuWeek;
+					},
+
+					get onHover() {
+						return $$props.onHoverWeek;
+					},
+
 					get selectedId() {
 						return $$props.selectedId;
 					},
-
-					get selectedSecondDailyId() {
-						return selectedSecondDailyId();
-					}
+					gridRight: true
 				});
 			}
-		});
 
-		var node_10 = sibling(node_9);
+			var node_15 = sibling(node_14);
 
-		{
-			var consequent_5 = ($$anchor) => {
+			each(node_15, 17, () => get(weekData).days, (day) => day.format(), ($$anchor, day) => {
 				{
-					let $0 = user_derived(() => getWeeklyMetadata(sources(), get(week).days[0], today(), revision()));
-					let $1 = user_derived(() => !showWeekNumsRight());
+					let $0 = user_derived(() => getDailyMetadata(sources(), get(day), today(), revision()));
 
-					WeekNum($$anchor, spread_props(() => get(week), {
-						get metadata() {
-							return get($0);
+					Day($$anchor, {
+						get date() {
+							return get(day);
+						},
+
+						get today() {
+							return today();
+						},
+						displayedMonth: null,
+						get weekendDays() {
+							return weekendDays();
 						},
 
 						get onClick() {
-							return $$props.onClickWeek;
+							return $$props.onClickDay;
 						},
 
 						get onContextMenu() {
-							return $$props.onContextMenuWeek;
+							return $$props.onContextMenuDay;
 						},
 
 						get onHover() {
-							return $$props.onHoverWeek;
+							return $$props.onHoverDay;
+						},
+
+						get metadata() {
+							return get($0);
 						},
 
 						get selectedId() {
 							return $$props.selectedId;
 						},
 
-						get gridRight() {
-							return get($1);
+						get selectedSecondDailyId() {
+							return selectedSecondDailyId();
 						}
-					}));
+					});
 				}
-			};
-
-			if_block(node_10, ($$render) => {
-				if (showWeekNums() && showWeekNumsRight()) $$render(consequent_5);
 			});
-		}
-		append($$anchor, tr_1);
-	});
+			append($$anchor, table_1);
+		};
+
+		if_block(node_3, ($$render) => {
+			if (viewMode() === "month") $$render(consequent_6); else $$render(alternate, -1);
+		});
+	}
 	template_effect(() => classes = set_class(div, 1, 'container svelte-1cv5gx', null, classes, { 'is-mobile': isMobile }));
 	append($$anchor, div);
 
@@ -10676,6 +11016,18 @@ function Calendar($$anchor, $$props) {
 			return $$props.onClickToday;
 		},
 
+		get viewMode() {
+			return $settings().viewMode;
+		},
+
+		get onViewModeChange() {
+			return $$props.onViewModeChange;
+		},
+
+		get weekStartOption() {
+			return $settings().weekStart;
+		},
+
 		get localeData() {
 			return get(localeData);
 		},
@@ -10730,7 +11082,8 @@ function Calendar($$anchor, $$props) {
 		'monthly-enabled': $settings().monthly.enabled,
 		'quarterly-enabled': $settings().quarterly.enabled,
 		'yearly-enabled': $settings().yearly.enabled,
-		'weekend-shading-enabled': $settings().shadeWeekendColumns
+		'weekend-shading-enabled': $settings().shadeWeekendColumns,
+		'week-view': $settings().viewMode === "week"
 	}));
 
 	append($$anchor, div);
@@ -11612,6 +11965,7 @@ class CalendarView extends obsidian.ItemView {
                 onClickYear: this.openOrCreateYearlyNote,
                 onClickQuarter: this.openOrCreateQuarterlyNote,
                 onClickToday: this.onClickToday,
+                onViewModeChange: (mode) => void this.plugin.writeOptions(() => ({ viewMode: mode })),
                 onHoverDay: this.onHoverDay,
                 onHoverWeek: this.onHoverWeek,
                 onContextMenuDay: this.onContextMenuDay,

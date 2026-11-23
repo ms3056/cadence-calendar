@@ -1,7 +1,7 @@
 import { getLanguage } from "obsidian";
 
 import { moment } from "src/types/moment";
-import type { WeekSpec } from "src/types/moment";
+import type { Moment, WeekSpec } from "src/types/moment";
 import type { LocaleDataWithWeek } from "src/types/obsidian-internal";
 
 declare global {
@@ -63,6 +63,24 @@ const weekdays = [
   "friday",
   "saturday",
 ];
+
+/**
+ * Start of the week containing `date`, computed from the plugin's explicit
+ * week-start setting. `moment.startOf("week")` uses the locale attached to the
+ * moment instance, which can be the pre-configure locale for the initial
+ * `displayedMonth` — that produced Sunday-start dates under Monday-first
+ * headers. Using JS day numbers (`0` = Sunday) avoids instance-locale drift.
+ */
+export function getWeekStartForSetting(
+  date: Moment,
+  weekStart: IWeekStartOption
+): Moment {
+  const localeWeek = (moment.localeData() as unknown as LocaleDataWithWeek)._week;
+  const dow =
+    weekStart === "locale" ? (localeWeek?.dow ?? 0) : weekdays.indexOf(weekStart);
+  const offset = (date.day() - dow + 7) % 7;
+  return date.clone().startOf("day").subtract(offset, "days");
+}
 
 function overrideGlobalMomentWeekStart(weekStart: IWeekStartOption): void {
   const currentLocale = moment.locale();

@@ -34,8 +34,9 @@
   .arrow {
     align-items: center;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     justify-content: center;
+    line-height: 1;
     width: 24px;
   }
 

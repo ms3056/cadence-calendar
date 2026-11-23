@@ -159,6 +159,37 @@ body.cc-weekend-use-custom-color {
   padding-top: 8px;
 }
 
+/* Let the containing tab stack collapse around the tab bar + Week View too.
+   Obsidian otherwise applies a flex min-height to .workspace-tabs/.workspace-tab-container,
+   which keeps the sidebar split divider from closing tightly around a short view. */
+.workspace-tabs:has(.workspace-leaf-content[data-type="cadence-calendar-view"]),
+.workspace-tabs:has(.workspace-leaf-content[data-type="cadence-calendar-view"]) > .workspace-tab-container {
+  min-height: 0;
+}
+
+/* Let only Cadence Calendar's own leaf collapse to its natural height.
+   Obsidian's sidebar/split layout otherwise keeps a flex min-height floor,
+   which left dead space under the single-row Week View grid. No overflow or
+   height rule is applied here, so Month View still scrolls when clipped. */
+.workspace-leaf-content[data-type="cadence-calendar-view"],
+.workspace-leaf-content[data-type="cadence-calendar-view"] > .view-content {
+  min-height: 0;
+}
+
+.workspace-leaf:has(.workspace-leaf-content[data-type="cadence-calendar-view"]) {
+  min-height: 0;
+}
+
+.workspace-leaf-content[data-type="cadence-calendar-view"] .cadence-calendar-wrapper,
+.workspace-leaf-content[data-type="cadence-calendar-view"] #calendar-container {
+  height: auto;
+  min-height: 0;
+}
+
+.workspace-leaf-content[data-type="cadence-calendar-view"] #calendar-container {
+  padding-bottom: 12px;
+}
+
 /* Render frontmatter emoji tags (e.g. tags: [⭐] or tags: [✈️]) centered above the day number */
 .cadence-calendar-wrapper #calendar-container .day[data-emoji-tag]::after,
 .cadence-calendar-wrapper #calendar-container .week-num[data-emoji-tag]::after {

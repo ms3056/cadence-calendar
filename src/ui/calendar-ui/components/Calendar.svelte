@@ -10,6 +10,8 @@
   import YearGrid from "./YearGrid.svelte";
   import { getDailyMetadata, getWeeklyMetadata } from "../metadata";
   import type { ICalendarSource } from "../types";
+  import { getWeekStartForSetting } from "../localization";
+  import type { IWeekStartOption } from "../localization";
   import { getDaysOfWeek, getMonth, isWeekend } from "../utils";
 
   let {
@@ -40,6 +42,9 @@
     // per-month "has any note" dot.
     showYearOverview = false,
     monthsWithNotes = [],
+    viewMode = "month",
+    onViewModeChange = undefined,
+    weekStartOption = "locale",
     // External sources (all optional)
     sources = [],
     selectedId,
@@ -69,6 +74,9 @@
     showTodayButtonOnMobile?: boolean;
     showYearOverview?: boolean;
     monthsWithNotes?: boolean[];
+    viewMode?: "month" | "week";
+    onViewModeChange?: (mode: "month" | "week") => void;
+    weekStartOption?: IWeekStartOption;
     sources?: ICalendarSource[];
     selectedId: string | null;
     selectedSecondDailyId?: string | null;
@@ -108,6 +116,35 @@
   const month = $derived(getMonth(displayedMonth, localeData));
   const daysOfWeek = $derived(getDaysOfWeek(localeData));
 
+  // Week View derives its 7-day window from the same displayed date anchor
+  // the month grid uses, using the plugin's configured week-start setting.
+  // `today` is read here only as a reactivity trigger for day rollover; the
+  // actual key is computed from a fresh `moment()` so no earlier navigation
+  // or helper can leave a stale/mutated Moment object cached in this derived.
+  const weekData = $derived.by(() => {
+    void localeData;
+    void today;
+    const start = getWeekStartForSetting(displayedMonth, weekStartOption);
+    const days = Array.from({ length: 7 }, (_, i) =>
+      start.clone().add(i, "days")
+    );
+    const end = start.clone().add(6, "days");
+    const todayKey = moment().format("YYYY-MM-DD");
+    const startKey = start.format("YYYY-MM-DD");
+    const endKey = end.format("YYYY-MM-DD");
+    return {
+      start,
+      end,
+      days,
+      num: start.week(),
+      isCurrent: todayKey >= startKey && todayKey <= endKey,
+    };
+  });
+
+  // Direct primitive so the Nav `{#if isCurrentWeek}` block reads a
+  // first-class reactive value rather than a property of a derived object.
+  const isCurrentWeek = $derived(weekData.isCurrent);
+
   // Exports
   export function incrementDisplayedMonth() {
     displayedMonth = displayedMonth.clone().add(1, "month");
@@ -120,6 +157,19 @@
   export function resetDisplayedMonth() {
     displayedMonth = today.clone();
   }
+
+  function incrementDisplayedWeek() {
+    displayedMonth = displayedMonth.clone().add(1, "week");
+  }
+
+  function decrementDisplayedWeek() {
+    displayedMonth = displayedMonth.clone().subtract(1, "week");
+  }
+
+  function toggleViewMode() {
+    onViewModeChange?.(viewMode === "month" ? "week" : "month");
+  }
+
 </script>
 
 <svelte:window
@@ -132,8 +182,14 @@
   <Nav
     {today}
     {displayedMonth}
-    {incrementDisplayedMonth}
-    {decrementDisplayedMonth}
+    incrementPeriod={viewMode === "week" ? incrementDisplayedWeek : incrementDisplayedMonth}
+    decrementPeriod={viewMode === "week" ? decrementDisplayedWeek : decrementDisplayedMonth}
+    {viewMode}
+    onToggleView={toggleViewMode}
+    weekStart={weekData.start}
+    weekEnd={weekData.end}
+    weekNum={weekData.num}
+    {isCurrentWeek}
     {quarterVisible}
     {onClickMonth}
     {onClickYear}
@@ -157,6 +213,7 @@
       />
     </div>
   {/if}
+  {#if viewMode === "month"}
   <table class="calendar">
     <colgroup>
       {#if showWeekNums && !showWeekNumsRight}
@@ -222,6 +279,52 @@
       {/each}
     </tbody>
   </table>
+  {:else}
+    <table class="calendar week-view">
+      <colgroup>
+        <col />
+        {#each weekData.days as _date}
+          <col />
+        {/each}
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="week-num-heading">W</th>
+          {#each daysOfWeek as dayOfWeek, i}
+            <th class:weekend={isWeekend(weekData.days[i], weekendDays)}>{dayOfWeek}</th>
+          {/each}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <WeekNum
+            weekNum={weekData.num}
+            days={weekData.days}
+            metadata={getWeeklyMetadata(sources, weekData.days[0], today, revision)}
+            onClick={onClickWeek}
+            onContextMenu={onContextMenuWeek}
+            onHover={onHoverWeek}
+            {selectedId}
+            gridRight={true}
+          />
+          {#each weekData.days as day (day.format())}
+            <Day
+              date={day}
+              {today}
+              displayedMonth={null}
+              {weekendDays}
+              onClick={onClickDay}
+              onContextMenu={onContextMenuDay}
+              onHover={onHoverDay}
+              metadata={getDailyMetadata(sources, day, today, revision)}
+              {selectedId}
+              {selectedSecondDailyId}
+            />
+          {/each}
+        </tr>
+      </tbody>
+    </table>
+  {/if}
 </div>
 
 <style>

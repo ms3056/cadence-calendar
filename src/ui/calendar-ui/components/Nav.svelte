@@ -7,8 +7,14 @@
     displayedMonth,
     today,
     resetDisplayedMonth,
-    incrementDisplayedMonth,
-    decrementDisplayedMonth,
+    incrementPeriod,
+    decrementPeriod,
+    viewMode = "month",
+    onToggleView = undefined,
+    weekStart = today,
+    weekEnd = today,
+    weekNum = 0,
+    isCurrentWeek = false,
     quarterVisible,
     onClickMonth,
     onClickYear,
@@ -31,8 +37,14 @@
     displayedMonth: Moment;
     today: Moment;
     resetDisplayedMonth: () => void;
-    incrementDisplayedMonth: () => void;
-    decrementDisplayedMonth: () => void;
+    incrementPeriod: () => void;
+    decrementPeriod: () => void;
+    viewMode?: "month" | "week";
+    onToggleView?: () => void;
+    weekStart?: Moment;
+    weekEnd?: Moment;
+    weekNum?: number;
+    isCurrentWeek?: boolean;
     quarterVisible: boolean;
     onClickMonth: (date: Moment, isMetaPressed: boolean) => void;
     onClickYear: (date: Moment, isMetaPressed: boolean) => void;
@@ -57,25 +69,118 @@
     return displayedMonth.clone().year(year).month(startMonth).startOf("month");
   }
   const currentQuarter = $derived(getCurrentQuarter(displayedMonth.month()));
+
+  const weekTitle = $derived.by(() => {
+    if (viewMode !== "week") return { range: "", year: "" };
+
+    // A week crossing years carries both years inline; a week crossing only
+    // a month boundary omits spaces around the dash to stay on one line.
+    if (weekStart.year() !== weekEnd.year()) {
+      return {
+        range: `${weekStart.format("MMM D, YYYY")}–${weekEnd.format("MMM D, YYYY")}`,
+        year: "",
+      };
+    }
+    if (weekStart.isSame(weekEnd, "month")) {
+      return {
+        range: `${weekStart.format("MMM D")}–${weekEnd.format("D")}`,
+        year: `, ${weekEnd.format("YYYY")}`,
+      };
+    }
+    return {
+      range: `${weekStart.format("MMM D")}–${weekEnd.format("MMM D")}`,
+      year: `, ${weekEnd.format("YYYY")}`,
+    };
+  });
 </script>
 
-<div class="nav" class:is-mobile="{isMobile}">
-  <div class="title-container">
-    <h3 class="title">
-      <span
-        class="month"
-        onclick={(event) => {
-          onClickMonth(displayedMonth, isMetaPressed(event));
-        }}>{displayedMonth.format("MMM")}</span
-      >
-      <span
-        class="year"
-        onclick={(event) => {
-          onClickYear(displayedMonth, isMetaPressed(event));
-        }}>{displayedMonth.format("YYYY")}</span
-      >
-    </h3>
-    {#if quarterVisible}
+<div class="calendar-header">
+  <div class="nav" class:is-mobile="{isMobile}">
+    <div class="title-container">
+      {#if viewMode === "week"}
+        <h3 class="title week-title"><span class="month">{weekTitle.range}</span><span class="year">{weekTitle.year}</span></h3>
+      {:else}
+        <h3 class="title"
+          ><span
+            class="month"
+            onclick={(event) => {
+              onClickMonth(displayedMonth, isMetaPressed(event));
+            }}>{displayedMonth.format("MMM")}</span
+          ><span
+            class="year"
+            onclick={(event) => {
+              onClickYear(displayedMonth, isMetaPressed(event));
+            }}>{displayedMonth.format("YYYY")}</span
+          ></h3
+        >
+      {/if}
+    </div>
+    <div class="right-nav">
+      {#if showYearOverviewButton}
+        <div
+          class="year-overview-toggle"
+          class:active={yearOverviewOpen}
+          onclick={(e) => {
+            e.stopPropagation();
+            onToggleYearOverview?.();
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+            <path d="M12 7v5l4 2"></path>
+          </svg>
+        </div>
+      {/if}
+      <div class="view-toggle" role="group" aria-label="Calendar view">
+        <button
+          type="button"
+          class:active={viewMode === "month"}
+          aria-pressed={viewMode === "month"}
+          title="Month view"
+          onclick={() => {
+            if (viewMode !== "month") onToggleView?.();
+          }}>Mᴏ</button
+        >
+        <button
+          type="button"
+          class:active={viewMode === "week"}
+          aria-pressed={viewMode === "week"}
+          title="Week view"
+          onclick={() => {
+            if (viewMode !== "week") onToggleView?.();
+          }}>Wᴋ</button
+        >
+      </div>
+      <Arrow direction="left" onClick={decrementPeriod} />
+      {#if !isMobile || showTodayButtonOnMobile}
+        <div
+          class="reset-button"
+          onclick={() => {
+            resetDisplayedMonth();
+            onClickToday?.(today);
+          }}
+        >
+          {todayDisplayStr}
+        </div>
+      {/if}
+      <Arrow direction="right" onClick={incrementPeriod} />
+    </div>
+  </div>
+  {#if viewMode === "week"}
+    <div class="sub-header" class:hidden={!isCurrentWeek} aria-hidden={!isCurrentWeek}>
+      <div class="week-sublabel">This Week</div>
+    </div>
+  {:else if quarterVisible}
+    <div class="sub-header">
       <div class="quarters">
         {#each [1, 2, 3, 4] as quarter, index}
           <span
@@ -92,54 +197,17 @@
           {/if}
         {/each}
       </div>
-    {/if}
-  </div>
-  <div class="right-nav">
-    {#if showYearOverviewButton}
-      <div
-        class="year-overview-toggle"
-        class:active={yearOverviewOpen}
-        onclick={(e) => {
-          e.stopPropagation();
-          onToggleYearOverview?.();
-        }}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-          <path d="M3 3v5h5"></path>
-          <path d="M12 7v5l4 2"></path>
-        </svg>
-      </div>
-    {/if}
-    <Arrow direction="left" onClick={decrementDisplayedMonth} />
-    {#if !isMobile || showTodayButtonOnMobile}
-      <div
-        class="reset-button"
-        onclick={() => {
-          resetDisplayedMonth();
-          onClickToday?.(today);
-        }}
-      >
-        {todayDisplayStr}
-      </div>
-    {/if}
-    <Arrow direction="right" onClick={incrementDisplayedMonth} />
-  </div>
+    </div>
+  {/if}
 </div>
 
 <style>
   .nav {
     align-items: center;
     display: flex;
-    margin: 0.6em 0 1em;
+    gap: 6px;
+    justify-content: space-between;
+    margin: 0.6em 0 0;
     padding: 0 8px;
     width: 100%;
   }
@@ -150,19 +218,37 @@
   }
 
   .title-container {
+    align-items: center;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .sub-header {
+    margin: 2px 8px 8px;
+  }
+
+  .sub-header.hidden {
+    display: none;
   }
 
   .title {
     color: var(--color-text-title);
     font-size: 1.5em;
+    line-height: 1.2;
     margin: 0;
+  }
+
+  .title.week-title {
+    font-size: 1.05rem;
+    white-space: nowrap;
   }
 
   .is-mobile .title {
     font-size: 1.3em;
+  }
+
+  .is-mobile .title.week-title {
+    font-size: 1.05rem;
   }
 
   .month {
@@ -179,7 +265,7 @@
   .quarters {
     display: flex;
     align-items: center;
-    margin-top: 4px;
+    margin-top: 0;
     /* 2px optical nudge to the right — sits the cluster just inside the
        month title's left edge instead of perfectly flush, which reads
        better at this font size. Not restoring the old per-item margins
@@ -216,13 +302,16 @@
   }
 
   .right-nav {
-    display: flex;
-    justify-content: center;
     align-items: center;
-    margin-left: auto;
+    display: flex;
+    justify-content: flex-end;
+    margin-left: 0;
   }
 
   .reset-button {
+    align-items: center;
+    display: inline-flex;
+    line-height: 1;
     cursor: pointer;
     border-radius: 4px;
     color: var(--text-muted);
@@ -236,6 +325,50 @@
 
   .reset-button:hover {
     opacity: 0.7;
+  }
+
+  .week-sublabel {
+    color: var(--text-muted);
+    cursor: default;
+    font-size: 0.7em;
+    margin: 0;
+    padding-left: 2px;
+  }
+
+  .view-toggle {
+    align-items: center;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 999px;
+    display: inline-flex;
+    gap: 2px;
+    margin-right: 4px;
+    padding: 2px;
+  }
+
+  .view-toggle button {
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    box-shadow: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    height: auto;
+    line-height: 1.2;
+    min-height: 0;
+    padding: 2px 9px;
+  }
+
+  .view-toggle button:hover {
+    color: var(--text-normal);
+  }
+
+  .view-toggle button.active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    margin: 2px;
   }
 
   .year-overview-toggle {

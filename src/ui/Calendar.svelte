@@ -22,6 +22,7 @@
     onClickYear,
     onClickQuarter,
     onClickToday,
+    onViewModeChange,
     onContextMenuDay,
     onContextMenuWeek,
   }: {
@@ -34,6 +35,7 @@
     onClickYear: (date: Moment, isMetaPressed: boolean) => void;
     onClickQuarter: (date: Moment, isMetaPressed: boolean) => void;
     onClickToday: (date: Moment) => void;
+    onViewModeChange: (mode: "month" | "week") => void;
     onContextMenuDay: (date: Moment, event: MouseEvent) => void;
     onContextMenuWeek: (date: Moment, event: MouseEvent) => void;
   } = $props();
@@ -231,6 +233,7 @@
   class:quarterly-enabled={$settings.quarterly.enabled}
   class:yearly-enabled={$settings.yearly.enabled}
   class:weekend-shading-enabled={$settings.shadeWeekendColumns}
+  class:week-view={$settings.viewMode === "week"}
 >
   <CalendarBase
     {sources}
@@ -246,6 +249,9 @@
     {onClickYear}
     {onClickQuarter}
     {onClickToday}
+    viewMode={$settings.viewMode}
+    {onViewModeChange}
+    weekStartOption={$settings.weekStart}
     bind:displayedMonth
     {localeData}
     selectedId={$activeFile}

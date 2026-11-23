@@ -138,6 +138,8 @@ export default class CalendarView extends ItemView {
         onClickYear: this.openOrCreateYearlyNote,
         onClickQuarter: this.openOrCreateQuarterlyNote,
         onClickToday: this.onClickToday,
+        onViewModeChange: (mode: "month" | "week") =>
+          void this.plugin.writeOptions(() => ({ viewMode: mode })),
         onHoverDay: this.onHoverDay,
         onHoverWeek: this.onHoverWeek,
         onContextMenuDay: this.onContextMenuDay,
