@@ -171,11 +171,79 @@ body.cc-weekend-use-custom-color {
   fill: var(--text-accent) !important;
 }
 
-/* Leave room above the inner day box for the emoji badge. The same padding
-   is used on every day/week cell, so date numbers stay on one baseline. */
-.cadence-calendar-wrapper #calendar-container .day,
-.cadence-calendar-wrapper #calendar-container .week-num {
+/* Emoji-badge clearance. Month View is tightened to a 42px row (was 52px):
+   the 4px top padding plus the 5px badge gap still leaves ~3px between a
+   badge on this row and a note dot on the row above. Week View keeps the
+   original 14px so its single row and footer spacing do not move. */
+.cadence-calendar-wrapper:not(.is-week-view) #calendar-container .day,
+.cadence-calendar-wrapper:not(.is-week-view) #calendar-container .week-num {
+  padding-top: 4px;
+}
+
+/* Comfortable density restores the roomier 14px top padding. Scoped to
+   Month View only; Week View keeps the 14px rule below regardless. */
+.cadence-calendar-wrapper:not(.is-week-view)[data-density="comfortable"] #calendar-container .day,
+.cadence-calendar-wrapper:not(.is-week-view)[data-density="comfortable"] #calendar-container .week-num {
   padding-top: 14px;
+}
+
+.cadence-calendar-wrapper.is-week-view #calendar-container .day,
+.cadence-calendar-wrapper.is-week-view #calendar-container .week-num {
+  padding-top: 14px;
+}
+
+/* With tag emojis hidden there is no badge to clear. Pull the weekday header
+   closer to the first date row in both views. The 2px margin on the first
+   day box keeps a small visual break under the labels without reserving that
+   space in every row. */
+.cadence-calendar-wrapper.no-tag-emojis #calendar-container thead th {
+  padding-bottom: 2px;
+}
+
+.cadence-calendar-wrapper.no-tag-emojis #calendar-container tbody tr:first-child .day-highlight {
+  margin-top: 2px;
+}
+
+/* Month + Compact: trim the remaining emoji buffer from every row. */
+.cadence-calendar-wrapper.no-tag-emojis:not(.is-week-view)[data-density="compact"] #calendar-container .day,
+.cadence-calendar-wrapper.no-tag-emojis:not(.is-week-view)[data-density="compact"] #calendar-container .week-num {
+  padding-top: 1px;
+}
+
+/* Intersection only: Month View + Compact density + tag emojis hidden.
+   The vendored Day.svelte `.day-highlight { min-height: 34px }` plus the
+   cell's 4px bottom padding are what keep rows near 40px. Shrink both here;
+   every other view/mode keeps its existing geometry. */
+.cadence-calendar-wrapper:not(.is-week-view).is-compact.no-tag-emojis #calendar-container thead th {
+  padding-bottom: 0;
+}
+
+.cadence-calendar-wrapper:not(.is-week-view).is-compact.no-tag-emojis #calendar-container table.calendar tbody tr,
+.cadence-calendar-wrapper:not(.is-week-view).is-compact.no-tag-emojis #calendar-container table.calendar tbody td {
+  box-sizing: border-box;
+  height: 30px;
+  min-height: 30px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+.cadence-calendar-wrapper:not(.is-week-view).is-compact.no-tag-emojis #calendar-container .day,
+.cadence-calendar-wrapper:not(.is-week-view).is-compact.no-tag-emojis #calendar-container .week-num {
+  box-sizing: border-box;
+  min-height: 0;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+.cadence-calendar-wrapper:not(.is-week-view).is-compact.no-tag-emojis #calendar-container .day-highlight {
+  min-height: 26px;
+}
+
+/* Week View has its own 14px clearance; collapse it to the same tight first
+   row only when the tag badges are hidden. */
+.cadence-calendar-wrapper.no-tag-emojis.is-week-view #calendar-container table.week-view tbody tr:first-child .day,
+.cadence-calendar-wrapper.no-tag-emojis.is-week-view #calendar-container table.week-view tbody tr:first-child .week-num {
+  padding-top: 1px;
 }
 
 /* Reclaim horizontal space in this view only: Obsidian's leaf padding plus
@@ -333,8 +401,8 @@ body.cc-weekend-use-custom-color {
   overflow: visible;
 }
 
-.cadence-calendar-wrapper #calendar-container .day-highlight[data-emoji-tag]::after,
-.cadence-calendar-wrapper #calendar-container .week-num[data-emoji-tag]::after {
+.cadence-calendar-wrapper[data-show-tag-emojis="true"] #calendar-container .day-highlight[data-emoji-tag]::after,
+.cadence-calendar-wrapper[data-show-tag-emojis="true"] #calendar-container .week-num[data-emoji-tag]::after {
   bottom: calc(100% + 5px);
   content: attr(data-emoji-tag);
   font-size: 10.5px;

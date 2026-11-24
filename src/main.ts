@@ -474,6 +474,26 @@ export default class CalendarPlugin extends Plugin {
     const saved: unknown = (await this.loadData()) ?? {};
     settings.update((defaults) => deepMerge(defaults, saved));
 
+    // Migrate the old single "viewMode" setting: it used to serve as both the
+    // startup view and the last active view. New installs use the explicit
+    // defaultViewMode / lastViewMode pair.
+    const savedRecord =
+      saved && typeof saved === "object"
+        ? (saved as Record<string, unknown>)
+        : {};
+    const legacyViewMode = savedRecord.viewMode;
+    if (
+      savedRecord.defaultViewMode === undefined &&
+      (legacyViewMode === "month" || legacyViewMode === "week")
+    ) {
+      settings.update((current) =>
+        deepMerge(current, {
+          defaultViewMode: legacyViewMode,
+          lastViewMode: legacyViewMode,
+        })
+      );
+    }
+
     await this.saveData(this.options);
   }
 

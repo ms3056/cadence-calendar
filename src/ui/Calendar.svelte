@@ -262,7 +262,11 @@
   class:weekend-shading-enabled={$settings.shadeWeekendColumns}
   class:week-view={$settings.viewMode === "week"}
   class:is-week-view={$settings.viewMode === "week"}
+  class:no-tag-emojis={!$settings.showTagEmojis}
+  class:is-compact={$settings.gridDensity === "compact"}
   data-view-mode={$settings.viewMode}
+  data-density={$settings.gridDensity}
+  data-show-tag-emojis={$settings.showTagEmojis ? "true" : "false"}
 >
   <CalendarBase
     {sources}
@@ -293,7 +297,7 @@
     showYearOverview={$settings.showYearOverview}
     {monthsWithNotes}
   />
-  {#if $settings.viewMode === "week" && $settings.daily.enabled}
+  {#if $settings.viewMode === "week" && $settings.daily.enabled && $settings.showWeekFooter}
     <div class="week-detail-footer">
       <span class="week-detail-date">{selectedDailyDate.format("ddd, MMM D")}</span>
       <span class="week-detail-count">{notesInDisplayedWeek} {notesInDisplayedWeek === 1 ? "note" : "notes"}</span>

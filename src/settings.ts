@@ -120,8 +120,18 @@ export interface ISettings {
   showYearOverview: boolean;
   /** Open today's daily note when Obsidian starts, creating it first if needed. */
   openDailyNoteOnStartup: boolean;
-  /** Calendar layout: month grid (default) or a single-row week strip. */
+  /** Current calendar layout, kept reactive in the settings store. */
   viewMode: "month" | "week";
+  /** Which layout is selected when the calendar initializes. */
+  defaultViewMode: "month" | "week" | "remember";
+  /** Layout restored when defaultViewMode is "remember". */
+  lastViewMode: "month" | "week";
+  /** Month View row spacing; Week View keeps its own compact layout. */
+  gridDensity: "compact" | "comfortable";
+  /** Show frontmatter emoji badges above day numbers. */
+  showTagEmojis: boolean;
+  /** Show the Week View date/note-count footer. */
+  showWeekFooter: boolean;
 
   localeOverride: ILocaleOverride;
 
@@ -160,6 +170,11 @@ export const defaultSettings = Object.freeze({
   showYearOverview: false,
   openDailyNoteOnStartup: false,
   viewMode: "month",
+  defaultViewMode: "month",
+  lastViewMode: "month",
+  gridDensity: "compact",
+  showTagEmojis: true,
+  showWeekFooter: true,
 
   localeOverride: "system-default",
 
@@ -232,13 +247,19 @@ export class CalendarSettingsTab extends PluginSettingTab {
       this.plugin.options.weekStart
     );
 
+    new Setting(this.containerEl).setName("Appearance & View").setHeading();
+    this.addDefaultViewSetting();
+    this.addGridDensitySetting();
+    this.addShowTagEmojisSetting();
+    this.addShowWeekFooterSetting();
+    this.addWeekStartSetting();
+    this.addShowTodayButtonOnMobileSetting();
+    this.addShowYearOverviewSetting();
+
     new Setting(this.containerEl).setName("Calendar behavior").setHeading();
     this.addConfirmCreateSetting();
     this.addCtrlClickSetting();
     this.displayDotStyleSection();
-    this.addShowTodayButtonOnMobileSetting();
-    this.addDefaultViewSetting();
-    this.addShowYearOverviewSetting();
     this.displayWeekendSection();
     this.displayFeatureImageSection();
 
@@ -260,15 +281,80 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
   addDefaultViewSetting(): void {
     new Setting(this.containerEl)
-      .setName("Default calendar view")
-      .setDesc("Choose the layout shown when Cadence Calendar opens. You can also switch with the icon in the calendar header.")
+      .setName("Default view")
+      .setDesc("View shown when opening the calendar.")
       .addDropdown((dropdown) => {
         dropdown.addOption("month", "Month");
         dropdown.addOption("week", "Week");
-        dropdown.setValue(this.plugin.options.viewMode);
+        dropdown.addOption("remember", "Remember last");
+        dropdown.setValue(this.plugin.options.defaultViewMode);
+        dropdown.onChange(async (value) => {
+          const mode = value as "month" | "week" | "remember";
+          await this.plugin.writeOptions((prev) => ({
+            defaultViewMode: mode,
+            viewMode: mode === "remember" ? prev.lastViewMode : mode,
+          }));
+        });
+      });
+  }
+
+  addGridDensitySetting(): void {
+    new Setting(this.containerEl)
+      .setName("Grid density")
+      .setDesc("Vertical spacing between rows in Month View.")
+      .addDropdown((dropdown) => {
+        dropdown.addOption("compact", "Compact");
+        dropdown.addOption("comfortable", "Comfortable");
+        dropdown.setValue(this.plugin.options.gridDensity);
         dropdown.onChange(async (value) => {
           await this.plugin.writeOptions(() => ({
-            viewMode: value as "month" | "week",
+            gridDensity: value as "compact" | "comfortable",
+          }));
+        });
+      });
+  }
+
+  addShowTagEmojisSetting(): void {
+    new Setting(this.containerEl)
+      .setName("Show tag emojis")
+      .setDesc("Display note tag emojis above day numbers.")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.options.showTagEmojis);
+        toggle.onChange(async (value) => {
+          await this.plugin.writeOptions(() => ({ showTagEmojis: value }));
+        });
+      });
+  }
+
+  addShowWeekFooterSetting(): void {
+    new Setting(this.containerEl)
+      .setName("Show Week View footer")
+      .setDesc("Display the selected date and weekly note count below Week View.")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.options.showWeekFooter);
+        toggle.onChange(async (value) => {
+          await this.plugin.writeOptions(() => ({ showWeekFooter: value }));
+        });
+      });
+  }
+
+  addWeekStartSetting(): void {
+    const localizedWeekdays = moment.weekdays();
+    const localeWeekStartNum = window._bundledLocaleWeekSpec.dow;
+    const localeWeekStart = moment.weekdays()[localeWeekStartNum];
+
+    new Setting(this.containerEl)
+      .setName("Start week on")
+      .setDesc("Choose the first day of the week.")
+      .addDropdown((dropdown) => {
+        dropdown.addOption("locale", `Locale default (${localeWeekStart})`);
+        localizedWeekdays.forEach((day, i) => {
+          dropdown.addOption(weekdays[i], day);
+        });
+        dropdown.setValue(this.plugin.options.weekStart);
+        dropdown.onChange(async (value) => {
+          await this.plugin.writeOptions(() => ({
+            weekStart: value as IWeekStartOption,
           }));
         });
       });
@@ -345,28 +431,8 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
     new Setting(sectionEl).setName("Weekend").setHeading();
 
-    // Week start
+    // Locale-aware day names indexed by JS weekday: 0 = Sunday … 6 = Saturday.
     const localizedWeekdays = moment.weekdays();
-    const localeWeekStartNum = window._bundledLocaleWeekSpec.dow;
-    const localeWeekStart = moment.weekdays()[localeWeekStartNum];
-
-    new Setting(sectionEl)
-      .setName("Start week on")
-      .setDesc(
-        "Choose what day of the week to start. Select 'Locale default' to use the default specified by moment.js"
-      )
-      .addDropdown((dropdown) => {
-        dropdown.addOption("locale", `Locale default (${localeWeekStart})`);
-        localizedWeekdays.forEach((day, i) => {
-          dropdown.addOption(weekdays[i], day);
-        });
-        dropdown.setValue(this.plugin.options.weekStart);
-        dropdown.onChange(async (value) => {
-          void this.plugin.writeOptions(() => ({
-            weekStart: value as IWeekStartOption,
-          }));
-        });
-      });
 
     // Shade weekend columns
     new Setting(sectionEl)

@@ -129,6 +129,16 @@ export default class CalendarView extends ItemView {
     ];
     this.app.workspace.trigger(TRIGGER_ON_OPEN, sources);
 
+    // Resolve the startup view from the persisted preference. "remember"
+    // restores the last view the user toggled to; the other choices override
+    // it on every open. Writing viewMode keeps the reactive store in sync.
+    const { defaultViewMode, lastViewMode, viewMode } = this.plugin.options;
+    const initialViewMode =
+      defaultViewMode === "remember" ? lastViewMode : defaultViewMode;
+    if (viewMode !== initialViewMode) {
+      await this.plugin.writeOptions(() => ({ viewMode: initialViewMode }));
+    }
+
     this.calendar = mount(Calendar, {
       target: this.contentEl,
       props: {
@@ -139,7 +149,10 @@ export default class CalendarView extends ItemView {
         onClickQuarter: this.openOrCreateQuarterlyNote,
         onClickToday: this.onClickToday,
         onViewModeChange: (mode: "month" | "week") =>
-          void this.plugin.writeOptions(() => ({ viewMode: mode })),
+          void this.plugin.writeOptions(() => ({
+            viewMode: mode,
+            lastViewMode: mode,
+          })),
         onHoverDay: this.onHoverDay,
         onHoverWeek: this.onHoverWeek,
         onContextMenuDay: this.onContextMenuDay,
