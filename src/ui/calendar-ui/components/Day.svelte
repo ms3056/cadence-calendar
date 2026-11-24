@@ -131,28 +131,9 @@
     background-color: var(--interactive-accent);
   }
 
-  /* The second daily note for this day is the active file. Use a neutral grey
-     overlay (distinct from the accent fill used for the primary daily note) so
-     it reads as selected without competing with the purple. Implemented as a
-     translucent ::after so it works the same over plain cells and feature-image
-     cells; sits above the cell background / image (z-index: 0) but below the
-     number and dots (z-index: 1). The `.active` class is suppressed on these
-     cells (see the markup), so the two highlights never stack. */
-  .day.second-daily-active::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 4px;
-    background-color: var(--text-muted);
-    opacity: 0.4;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* Today's number is normally accent-colored (--color-text-today); under the
-     grey second-daily overlay that reads as out-of-place purple, so restore
-     the normal day text color to match every other second-daily-active cell.
-     (The primary-active state has the analogous `.day.active.today` override.) */
+  /* A secondary daily note is indicated by its dot only. The cell itself
+     keeps its normal background so it cannot alter Today's compact highlight
+     or the weekend column tint. */
   .day.second-daily-active.today {
     color: var(--color-text-day);
   }

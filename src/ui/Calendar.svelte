@@ -68,15 +68,16 @@
     }
     return today;
   });
-  // Count daily-note days in the displayed 7-day window. The store is keyed
-  // by the same getDateUID() value the day-cell dots use, so this matches the
-  // visible indicators exactly.
+  // Count every daily note in the displayed 7-day window: primary and
+  // secondary. Both stores use the same getDateUID(day, "daily") key, so a day
+  // with two notes contributes 2, matching the two visible dots.
   const notesInDisplayedWeek = $derived.by(() => {
     const start = getWeekStartForSetting(displayedMonth, $settings.weekStart);
     let count = 0;
     for (let offset = 0; offset < 7; offset += 1) {
-      const day = start.clone().add(offset, "days");
-      if ($dailyNotes?.[getDateUID(day, "daily")]) count += 1;
+      const uid = getDateUID(start.clone().add(offset, "days"), "daily");
+      if ($dailyNotes?.[uid]) count += 1;
+      if ($secondDailyNotes?.[uid]) count += 1;
     }
     return count;
   });
@@ -295,7 +296,7 @@
   {#if $settings.viewMode === "week" && $settings.daily.enabled}
     <div class="week-detail-footer">
       <span class="week-detail-date">{selectedDailyDate.format("ddd, MMM D")}</span>
-      <span class="week-detail-count">{notesInDisplayedWeek}/7 notes</span>
+      <span class="week-detail-count">{notesInDisplayedWeek} {notesInDisplayedWeek === 1 ? "note" : "notes"}</span>
     </div>
   {/if}
 </div>

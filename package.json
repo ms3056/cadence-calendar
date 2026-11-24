@@ -1,6 +1,6 @@
 {
   "name": "cadence-calendar",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "type": "module",
   "description": "Periodic calendar with automatic daily, weekly, monthly, quarterly, and yearly note creation and custom theme styling.",
   "author": "Matt Maiorana",
