@@ -2,10 +2,9 @@
   import type { Moment } from "src/types/moment";
   import { getDateUID } from "src/io/periodicNoteHelpers";
 
-  import Dot from "./Dot.svelte";
-  import MetadataResolver from "./MetadataResolver.svelte";
   import type { IDayMetadata } from "../types";
   import { getStartOfWeek, isMetaPressed } from "../utils";
+  import { syncDotsDom, type RenderedDot } from "../renderDots";
 
   let {
     // Properties
@@ -31,32 +30,67 @@
   } = $props();
 
   const startOfWeek = $derived(getStartOfWeek(days));
+
+  let resolvedClasses = $state<string[]>([]);
+  let resolvedDots = $state<RenderedDot[]>([]);
+  let resolvedBgImage = $state<string | null>(null);
+  let dotContainerEl: HTMLDivElement | null = null;
+
+  function clearResolved(): void {
+    resolvedClasses = [];
+    resolvedDots = [];
+    resolvedBgImage = null;
+    syncDotsDom(dotContainerEl, []);
+  }
+
+  $effect(() => {
+    syncDotsDom(dotContainerEl, resolvedDots);
+  });
+
+  $effect(() => {
+    const pending = metadata;
+    if (!pending) {
+      clearResolved();
+      return;
+    }
+
+    let cancelled = false;
+    void pending
+      .then((meta) => {
+        if (cancelled) return;
+        resolvedClasses = [...(meta.classes ?? [])];
+        resolvedDots = (meta.dots ?? []).map((dot) => ({
+          className: dot.className ?? "",
+          isFilled: !!dot.isFilled,
+        }));
+        resolvedBgImage = meta.backgroundImage ?? null;
+        syncDotsDom(dotContainerEl, resolvedDots);
+      })
+      .catch((err: unknown) => {
+        console.warn("[Cadence Calendar] week metadata rejected", err);
+        if (!cancelled) clearResolved();
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  });
 </script>
 
 <td class:grid-right={gridRight}>
-  <MetadataResolver {metadata}>
-    {#snippet children(metadata)}
-      <div
-        class={`week-num ${(metadata.classes ?? []).join(" ")}`}
-        class:active={selectedId === getDateUID(days[0], "weekly")}
-        class:has-background-image={!!metadata.backgroundImage}
-        style={metadata.backgroundImage
-          ? `background-image: url("${metadata.backgroundImage}")`
-          : ""}
-        onclick={onClick && ((e) => onClick(startOfWeek, isMetaPressed(e)))}
-        oncontextmenu={onContextMenu && ((e) => onContextMenu(days[0], e))}
-        onpointerover={onHover &&
-          ((e) => onHover(startOfWeek, e.currentTarget, isMetaPressed(e)))}
-      >
-        <span class="week-num-number">{weekNum}</span>
-        <div class="dot-container">
-          {#each metadata.dots ?? [] as dot}
-            <Dot {...dot} />
-          {/each}
-        </div>
-      </div>
-    {/snippet}
-  </MetadataResolver>
+  <div
+    class={`week-num ${resolvedClasses.join(" ")}`}
+    class:active={selectedId === getDateUID(days[0], "weekly")}
+    class:has-background-image={!!resolvedBgImage}
+    style={resolvedBgImage ? `background-image: url("${resolvedBgImage}")` : ""}
+    onclick={onClick && ((e) => onClick(startOfWeek, isMetaPressed(e)))}
+    oncontextmenu={onContextMenu && ((e) => onContextMenu(days[0], e))}
+    onpointerover={onHover &&
+      ((e) => onHover(startOfWeek, e.currentTarget, isMetaPressed(e)))}
+  >
+    <span class="week-num-number">{weekNum}</span>
+    <div class="dot-container" bind:this={dotContainerEl}></div>
+  </div>
 </td>
 
 <style>
@@ -156,5 +190,22 @@
     min-height: 6px;
     position: relative;
     z-index: 1;
+  }
+
+  .dot-container :global(.dot),
+  .dot-container :global(.hollow) {
+    display: inline-block;
+    height: 6px;
+    width: 6px;
+    margin: 0 1px;
+  }
+
+  .dot-container :global(.filled) {
+    fill: var(--color-dot);
+  }
+
+  .dot-container :global(.hollow) {
+    fill: none;
+    stroke: var(--color-dot);
   }
 </style>

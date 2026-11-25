@@ -14,8 +14,9 @@ export interface IDayMetadata {
 }
 
 export interface ICalendarSource {
-  getDailyMetadata?: (date: Moment) => Promise<IDayMetadata>;
-  getWeeklyMetadata?: (date: Moment) => Promise<IDayMetadata>;
+  /** `revision` is an explicit reactive dependency for store-backed sources. */
+  getDailyMetadata?: (date: Moment, revision?: number) => Promise<IDayMetadata>;
+  getWeeklyMetadata?: (date: Moment, revision?: number) => Promise<IDayMetadata>;
 }
 
 export interface IWeek {

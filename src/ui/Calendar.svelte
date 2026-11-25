@@ -12,7 +12,7 @@
   import type { ISettings, PeriodicNoteSettings } from "src/settings";
   import { moment } from "src/types/moment";
   import type { Moment } from "src/types/moment";
-  import { activeFile, activeSecondDailyFile, dailyNotes, monthlyNotes, quarterlyNotes, secondDailyNotes, settings, storeRevision, weeklyNotes, yearlyNotes } from "./stores";
+  import { activeFile, activeSecondDailyFile, bumpStoreRevision, dailyNotes, monthlyNotes, quarterlyNotes, secondDailyNotes, settings, storeRevision, weeklyNotes, yearlyNotes } from "./stores";
 
   let {
     sources,
@@ -52,10 +52,10 @@
   // `today` reactively.
   let displayedMonth = $state(moment());
 
-  // Combined primitive revision counter: increments whenever any periodic-note
-  // store is mutated ($storeRevision) OR when an explicit calendar tick fires
-  // (e.g. frontmatter / metadata / thumbnail / day rollover).
-  const revision = $derived($storeRevision + tickRevision);
+  // Both revision sources are passed down as first-class primitive props.
+  // A lazy $derived that adds them here can absorb a pre-first-read store bump
+  // into its initial value and emit no change to already-mounted day cells.
+  // CalendarBase derives the combined metadata revision from these props.
 
   // Week View footer: prefer the active daily note's date; otherwise anchor to
   // today. parseZone keeps the UID's original UTC offset so the store lookup
@@ -117,6 +117,10 @@
       mounted = true;
       reindexChangedStores(s, null);
       reindexedSettings = s;
+      // Guarantee a post-first-render signal. A store write that landed before
+      // the metadata derived was first read would otherwise be absorbed into
+      // its initial value, leaving mounted cells with a stale promise.
+      queueMicrotask(() => bumpStoreRevision());
     } else {
       debouncedReindex();
     }
@@ -271,7 +275,8 @@
   <CalendarBase
     {sources}
     {today}
-    {revision}
+    storeRevision={$storeRevision}
+    {tickRevision}
     {onHoverDay}
     {onHoverWeek}
     {onContextMenuDay}

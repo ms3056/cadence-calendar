@@ -2,9 +2,8 @@
   import type { Moment } from "src/types/moment";
   import { getDateUID } from "src/io/periodicNoteHelpers";
 
-  import Dot from "./Dot.svelte";
-  import MetadataResolver from "./MetadataResolver.svelte";
   import type { IDayMetadata } from "../types";
+  import { syncDotsDom, type RenderedDot } from "../renderDots";
   import { isMetaPressed, isWeekend } from "../utils";
 
   let {
@@ -36,41 +35,84 @@
   const isWeekendDay = $derived(isWeekend(date, weekendDays));
   const dailyUid = $derived(getDateUID(date, "daily"));
   const isSecondDailyActive = $derived(selectedSecondDailyId === dailyUid);
+  const isToday = $derived(date.isSame(today, "day"));
+
+  // Flat, independent state avoids the Svelte 5 snippet/proxy boundary that
+  // let `.dot-container` go stale while `has-note` updated.
+  let resolvedClasses = $state<string[]>([]);
+  let resolvedDots = $state<RenderedDot[]>([]);
+  let resolvedDataAttrs = $state<Record<string, string>>({});
+  let resolvedBgImage = $state<string | null>(null);
+
+  let dotContainerEl: HTMLDivElement | null = null;
+
+  function clearResolved(): void {
+    resolvedClasses = [];
+    resolvedDots = [];
+    resolvedDataAttrs = {};
+    resolvedBgImage = null;
+    syncDotsDom(dotContainerEl, []);
+  }
+
+  // Direct DOM ownership: no Svelte `{#each}` reconciler in .dot-container.
+  $effect(() => {
+    syncDotsDom(dotContainerEl, resolvedDots);
+  });
+
+  $effect(() => {
+    const pending = metadata;
+    if (!pending) {
+      clearResolved();
+      return;
+    }
+
+    let cancelled = false;
+    void pending
+      .then((meta) => {
+        if (cancelled) return;
+        resolvedClasses = [...(meta.classes ?? [])];
+        resolvedDots = (meta.dots ?? []).map((dot) => ({
+          className: dot.className ?? "",
+          isFilled: !!dot.isFilled,
+        }));
+        resolvedDataAttrs = { ...(meta.dataAttributes ?? {}) };
+        resolvedBgImage = meta.backgroundImage ?? null;
+        syncDotsDom(dotContainerEl, resolvedDots);
+      })
+      .catch((err: unknown) => {
+        console.warn("[Cadence Calendar] day metadata rejected", err);
+        if (!cancelled) clearResolved();
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  });
 </script>
 
 <td class:weekend={isWeekendDay}>
-  <MetadataResolver {metadata}>
-    {#snippet children(metadata)}
-      <div
-        class={`day ${(metadata.classes ?? []).join(" ")}`}
-        class:active={selectedId === dailyUid && !isSecondDailyActive}
-        class:second-daily-active={isSecondDailyActive}
-        class:adjacent-month={displayedMonth && !date.isSame(displayedMonth, "month")}
-        class:today={date.isSame(today, "day")}
-        class:has-background-image={!!metadata.backgroundImage}
-        style={metadata.backgroundImage
-          ? `background-image: url("${metadata.backgroundImage}")`
-          : ""}
-        onclick={onClick && ((e) => onClick(date, e))}
-        oncontextmenu={onContextMenu && ((e) => onContextMenu(date, e))}
-        onpointerover={onHover &&
-          ((e) => onHover(date, e.currentTarget, isMetaPressed(e)))}
-        {...metadata.dataAttributes || {}}
-      >
-        <div
-          class="day-highlight"
-          data-emoji-tag={metadata.dataAttributes?.["data-emoji-tag"] ?? undefined}
-        >
-          <span class="day-number">{date.format("D")}</span>
-          <div class="dot-container">
-            {#each metadata.dots ?? [] as dot}
-              <Dot {...dot} />
-            {/each}
-          </div>
-        </div>
-      </div>
-    {/snippet}
-  </MetadataResolver>
+  <div
+    class={`day ${resolvedClasses.join(" ")}`}
+    class:active={selectedId === dailyUid && !isSecondDailyActive}
+    class:second-daily-active={isSecondDailyActive}
+    class:adjacent-month={displayedMonth && !date.isSame(displayedMonth, "month")}
+    class:today={isToday}
+    class:has-background-image={!!resolvedBgImage}
+    style={resolvedBgImage ? `background-image: url("${resolvedBgImage}")` : ""}
+    onclick={onClick && ((e) => onClick(date, e))}
+    oncontextmenu={onContextMenu && ((e) => onContextMenu(date, e))}
+    onpointerover={onHover &&
+      ((e) => onHover(date, e.currentTarget, isMetaPressed(e)))}
+    {...resolvedDataAttrs}
+  >
+    <div
+      class="day-highlight"
+      data-emoji-tag={resolvedDataAttrs["data-emoji-tag"] ?? undefined}
+    >
+      <span class="day-number">{date.format("D")}</span>
+      <div class="dot-container" bind:this={dotContainerEl}></div>
+    </div>
+  </div>
 </td>
 
 <style>
@@ -216,5 +258,22 @@
     min-height: 6px;
     position: relative;
     z-index: 1;
+  }
+
+  .dot-container :global(.dot),
+  .dot-container :global(.hollow) {
+    display: inline-block;
+    height: 6px;
+    width: 6px;
+    margin: 0 1px;
+  }
+
+  .dot-container :global(.filled) {
+    fill: var(--color-dot);
+  }
+
+  .dot-container :global(.hollow) {
+    fill: none;
+    stroke: var(--color-dot);
   }
 </style>

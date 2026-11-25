@@ -4,6 +4,7 @@ import { get } from "svelte/store";
 
 import { VIEW_TYPE_CALENDAR } from "./constants";
 import {
+  getDateFromFile as helperGetDateFromFile,
   getPeriodicNote as helperGetPeriodicNote,
   getPeriodicNotePath,
 } from "./io/periodicNoteHelpers";
@@ -12,11 +13,13 @@ import { initThumbnailCache, teardownThumbnailCache } from "./io/thumbnailCache"
 import { configureGlobalMomentLocale } from "./ui/calendar-ui/localization";
 import {
   activeFile,
+  bumpStoreRevision,
   dailyNotes,
   monthlyNotes,
   quarterlyNotes,
   secondDailyNotes,
   settings,
+  syncFileToStores,
   weeklyNotes,
   yearlyNotes,
 } from "./ui/stores";
@@ -205,6 +208,31 @@ export default class CalendarPlugin extends Plugin {
       })
     );
 
+    // A full resolve pass is rare (startup / bulk index). Tag and featured
+    // image sources read metadataCache directly, so a view tick is enough;
+    // per-file changes are handled by the `changed` listener below.
+    this.registerEvent(
+      this.app.metadataCache.on("resolved", () => {
+        this.refreshAllCalendarViews();
+      })
+    );
+    this.registerEvent(
+      this.app.metadataCache.on("changed", (file) => {
+        if (!(file instanceof TFile)) return;
+        const matchedDaily =
+          this.options.daily.enabled &&
+          helperGetDateFromFile(file, "daily", this.options.daily.format);
+        const matchedWeekly =
+          this.options.weekly.enabled &&
+          helperGetDateFromFile(file, "weekly", this.options.weekly.format);
+        if (!matchedDaily && !matchedWeekly) return;
+        if (syncFileToStores(file)) {
+          bumpStoreRevision();
+          this.refreshAllCalendarViews();
+        }
+      })
+    );
+
     this.addRibbonIcon("calendar-days", "Open Cadence Calendar", () => {
       const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR);
       if (leaves.length) {
@@ -260,22 +288,13 @@ export default class CalendarPlugin extends Plugin {
 
     this.app.workspace.onLayoutReady(async () => {
       this.initLeaf();
+      // One initial full scan; creation/open paths sync their own files via
+      // vault events and syncFileToStores(), so no extra full rescans here.
       this.reindexAllStores();
       await this.ensureAutoCreatedNotes();
       // Must run AFTER auto-create so a note created at startup exists before opening.
       await this.openDailyNoteOnStartup();
       this.refreshAllCalendarViews();
-      // Catch-up reindex: another plugin (core Daily Notes, daily-note-automater,
-      // sync) can create a note in the first seconds after layout-ready, after
-      // the subscription above started but outside any single create tick we
-      // could reliably attribute. One deferred, idempotent full rescan closes
-      // every startup race without a timer loop.
-      window.setTimeout(() => {
-        if (this.app.workspace.layoutReady) {
-          this.reindexAllStores();
-          this.refreshAllCalendarViews();
-        }
-      }, 8000);
     });
   }
 
@@ -363,6 +382,7 @@ export default class CalendarPlugin extends Plugin {
       }
 
       if (anyChanged) {
+        this.reindexAllStores();
         this.refreshAllCalendarViews();
       }
 
@@ -426,6 +446,11 @@ export default class CalendarPlugin extends Plugin {
         }
       }
     }
+
+    // The file may have been created/opened by this helper; make sure the
+    // note store and calendar are synced before returning.
+    this.reindexAllStores();
+    this.refreshAllCalendarViews();
 
     if (this.app.workspace.getActiveFile()?.path === file.path) {
       activeFile.setFile(file);

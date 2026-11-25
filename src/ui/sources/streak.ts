@@ -25,7 +25,11 @@ const getNoteExistsDots = (file: TFile | null): IDot[] => {
 };
 
 export const streakSource: ICalendarSource = {
-  getDailyMetadata: async (date: Moment): Promise<IDayMetadata> => {
+  getDailyMetadata: async (date: Moment, revision?: number): Promise<IDayMetadata> => {
+    // `revision` is intentionally read here: the parent metadata promise must
+    // re-run this source whenever the note stores change. Existence is based
+    // only on the indexed TFile, so a brand-new 0-byte note still shows its dot.
+    void revision;
     const file = helperGetPeriodicNote(date, "daily", get(dailyNotes) ?? {});
     return {
       classes: getStreakClasses(file),

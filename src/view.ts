@@ -1,6 +1,8 @@
 import type { Moment } from "src/types/moment";
+import { moment } from "src/types/moment";
 import {
   getDateFromFile as helperGetDateFromFile,
+  getDateUID,
   getPeriodicNote as helperGetPeriodicNote,
 } from "src/io/periodicNoteHelpers";
 import { Keymap, Menu, ItemView, TFile } from "obsidian";
@@ -33,6 +35,8 @@ import {
   yearlyNotes,
   secondDailyNotes,
   settings,
+  syncFileToStores,
+  bumpStoreRevision,
 } from "./ui/stores";
 import {
   createFeatureImageSource,
@@ -115,6 +119,15 @@ export default class CalendarView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
+    // Obsidian can re-open an existing leaf without calling onClose first.
+    // Mounting again would leave an orphaned Svelte tree behind, so tear down
+    // any previous mount before creating the view again.
+    if (this.calendar) {
+      void unmount(this.calendar);
+      this.calendar = null;
+      this.contentEl.replaceChildren();
+    }
+
     // Integration point: external plugins can listen for `cadence-calendar:open`
     // (TRIGGER_ON_OPEN) to feed in additional sources. wordCountSource and
     // tasksSource self-gate on `dotMode === "word-count-tasks"`, so they have
@@ -167,7 +180,22 @@ export default class CalendarView extends ItemView {
     // reveals the calendar sidebar — common on mobile), without this the
     // active highlight stays missing until the user switches files.
     if (this.app.workspace.layoutReady) {
-      this.updateActiveFile();
+      // Guarantee a post-mount sync/tick: startup auto-create/open may have
+      // written the stores just before this view finished mounting.
+      const active = this.app.workspace.getActiveFile();
+      const todayUid = getDateUID(moment(), "daily");
+      const hadTodayInStore = Boolean(get(dailyNotes)?.[todayUid]);
+      if (
+        active instanceof TFile &&
+        !hadTodayInStore &&
+        this.settings.daily.enabled &&
+        helperGetDateFromFile(active, "daily", this.settings.daily.format)
+      ) {
+        syncFileToStores(active);
+        bumpStoreRevision();
+      }
+      this.onFileOpen(active);
+      window.setTimeout(() => this.calendar?.tick(), 0);
     }
 
     // When a feature-image thumbnail finishes generating in the background,
@@ -562,23 +590,15 @@ export default class CalendarView extends ItemView {
   };
 
   private onFileCreated = (file: TAbstractFile): void => {
-    if (!this.app.workspace.layoutReady) return;
     if (!(file instanceof TFile)) return;
-    const changed = [
-      dailyNotes.addFile(file),
-      weeklyNotes.addFile(file),
-      monthlyNotes.addFile(file),
-      quarterlyNotes.addFile(file),
-      yearlyNotes.addFile(file),
-      secondDailyNotes.addFile(file),
-    ].some(Boolean);
-    if (changed) {
+    // Do not gate on layoutReady here. A note created during layout restore
+    // must still be indexed even if no calendar leaf is mounted yet.
+    if (syncFileToStores(file)) {
       this.calendar?.tick();
     }
   };
 
   private onFileRenamed = (file: TAbstractFile, oldPath: string): void => {
-    if (!this.app.workspace.layoutReady) return;
     if (!(file instanceof TFile)) return;
     // A renamed image's thumbnail is keyed on the old path; drop it (the new
     // path regenerates on demand) so it doesn't orphan. Also invalidate any
@@ -605,14 +625,7 @@ export default class CalendarView extends ItemView {
       yearlyNotes.removeByOldPath(oldPath, file),
       secondDailyNotes.removeByOldPath(oldPath, file),
     ].some(Boolean);
-    const added = [
-      dailyNotes.addFile(file),
-      weeklyNotes.addFile(file),
-      monthlyNotes.addFile(file),
-      quarterlyNotes.addFile(file),
-      yearlyNotes.addFile(file),
-      secondDailyNotes.addFile(file),
-    ].some(Boolean);
+    const added = syncFileToStores(file);
     if (removed || added) {
       this.updateActiveFile();
       // A tracked note moved in/out of a configured folder — recompute dots.
@@ -622,6 +635,10 @@ export default class CalendarView extends ItemView {
 
   public refreshAfterStoreSync(): void {
     this.updateActiveFile();
+    // A store sync is a render signal in its own right: bump the revision so
+    // already-mounted cells re-run getDailyMetadata even if tick() coalesces
+    // with an earlier frame or the store write happened during mount.
+    bumpStoreRevision();
     this.calendar?.tick();
   }
 
@@ -645,7 +662,13 @@ export default class CalendarView extends ItemView {
     }
   };
 
-  public onFileOpen = (_file: TFile | null): void => {
+  public onFileOpen = (file: TFile | null): void => {
+    // Opening a note is a reliable signal even when the create event was
+    // missed during startup. Upsert it now so the primary dot appears without
+    // waiting for a reload/reindex.
+    if (file instanceof TFile && syncFileToStores(file)) {
+      this.calendar?.tick();
+    }
     if (this.app.workspace.layoutReady) {
       this.updateActiveFile();
     }

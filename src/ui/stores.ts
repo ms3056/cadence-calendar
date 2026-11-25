@@ -21,7 +21,7 @@ import { getDateUIDFromFile } from "./utils";
 // renamed, or reindexed.
 export const storeRevision = writable<number>(0);
 
-function bumpStoreRevision(): void {
+export function bumpStoreRevision(): void {
   storeRevision.update((n) => n + 1);
 }
 
@@ -69,9 +69,18 @@ function createPeriodicNotesStore(periodicity: Periodicity) {
       const date = getDateFromFile(file, periodicity, periodSettings.format);
       if (!date) return false;
       const uid = getDateUID(date, periodicity);
-      store.update((current) => ({ ...(current ?? {}), [uid]: file }));
+      let changed = false;
+      store.update((current) => {
+        if (current?.[uid] === file) return current;
+        changed = true;
+        // Always emit a new object reference so Svelte subscribers fire.
+        return { ...(current ?? {}), [uid]: file };
+      });
+      // Unconditional: a store write is a render signal even when the file
+      // reference happens to be unchanged (e.g. a post-mount rescan reuses
+      // the same TFile). The cell metadata sources are non-reactive.
       bumpStoreRevision();
-      return true;
+      return changed;
     },
     // Incremental remove for a single deleted file. Same guards as addFile.
     // Returns true if the UID was actually present in the store.
@@ -81,26 +90,37 @@ function createPeriodicNotesStore(periodicity: Periodicity) {
       if (!periodSettings.enabled) return false;
       if (!isFileInConfiguredFolder(file, periodSettings)) return false;
       const date = getDateFromFile(file, periodicity, periodSettings.format);
-      if (!date) return false;
-      const uid = getDateUID(date, periodicity);
+      const uids: string[] = [];
+      if (date) {
+        uids.push(getDateUID(date, periodicity));
+      } else {
+        // A deleted TFile can fail the normal parser (path detached, nested
+        // folder format changed mid-session). Fall back to a path scan so the
+        // stored UID is still cleared.
+        for (const [uid, stored] of Object.entries(get(store) ?? {})) {
+          if (stored.path === file.path || stored.basename === file.basename) {
+            uids.push(uid);
+          }
+        }
+      }
+      if (!uids.length) return false;
       let removed = false;
       store.update((current) => {
-        // Only remove if this exact file owns the UID — two files under a
-        // recursively-scanned folder can parse to the same date, and deleting
-        // one shouldn't drop the other's entry. Match by reference or path.
-        if (
-          !current ||
-          !current[uid] ||
-          (current[uid] !== file && current[uid].path !== file.path)
-        ) {
-          return current;
+        if (!current) return current;
+        let next = current;
+        for (const uid of uids) {
+          const stored = current[uid];
+          if (!stored) continue;
+          // Only remove if this exact file owns the UID — two files under a
+          // recursively-scanned folder can parse to the same date.
+          if (stored !== file && stored.path !== file.path) continue;
+          if (next === current) next = { ...current };
+          delete next[uid];
+          removed = true;
         }
-        removed = true;
-        const next = { ...current };
-        delete next[uid];
         return next;
       });
-      if (removed) bumpStoreRevision();
+      bumpStoreRevision();
       return removed;
     },
     // Remove the entry that the old path mapped to, given the vault `rename`
@@ -141,7 +161,7 @@ function createPeriodicNotesStore(periodicity: Periodicity) {
         delete next[uid];
         return next;
       });
-      if (removed) bumpStoreRevision();
+      bumpStoreRevision();
       return removed;
     },
     ...store,
@@ -190,33 +210,49 @@ function createSecondDailyNotesStore() {
       const date = getDateFromFile(file, "daily", secondDaily.format);
       if (!date) return false;
       const uid = getDateUID(date, "daily");
-      store.update((current) => ({ ...(current ?? {}), [uid]: file }));
+      let changed = false;
+      store.update((current) => {
+        if (current?.[uid] === file) return current;
+        changed = true;
+        return { ...(current ?? {}), [uid]: file };
+      });
+      // Unconditional: a store write is a render signal even when the file
+      // reference happens to be unchanged (e.g. a post-mount rescan reuses
+      // the same TFile). The cell metadata sources are non-reactive.
       bumpStoreRevision();
-      return true;
+      return changed;
     },
     removeFile: (file: TFile): boolean => {
       const { secondDaily } = get(settings);
       if (!secondDaily.enabled) return false;
       if (!isFileInConfiguredFolder(file, secondDaily)) return false;
       const date = getDateFromFile(file, "daily", secondDaily.format);
-      if (!date) return false;
-      const uid = getDateUID(date, "daily");
+      const uids: string[] = [];
+      if (date) {
+        uids.push(getDateUID(date, "daily"));
+      } else {
+        for (const [uid, stored] of Object.entries(get(store) ?? {})) {
+          if (stored.path === file.path || stored.basename === file.basename) {
+            uids.push(uid);
+          }
+        }
+      }
+      if (!uids.length) return false;
       let removed = false;
       store.update((current) => {
-        // Only remove if this exact file owns the UID (see periodic store).
-        if (
-          !current ||
-          !current[uid] ||
-          (current[uid] !== file && current[uid].path !== file.path)
-        ) {
-          return current;
+        if (!current) return current;
+        let next = current;
+        for (const uid of uids) {
+          const stored = current[uid];
+          if (!stored) continue;
+          if (stored !== file && stored.path !== file.path) continue;
+          if (next === current) next = { ...current };
+          delete next[uid];
+          removed = true;
         }
-        removed = true;
-        const next = { ...current };
-        delete next[uid];
         return next;
       });
-      if (removed) bumpStoreRevision();
+      bumpStoreRevision();
       return removed;
     },
     removeByOldPath: (oldPath: string, file: TFile): boolean => {
@@ -247,7 +283,7 @@ function createSecondDailyNotesStore() {
         delete next[uid];
         return next;
       });
-      if (removed) bumpStoreRevision();
+      bumpStoreRevision();
       return removed;
     },
     ...store,
@@ -255,6 +291,25 @@ function createSecondDailyNotesStore() {
 }
 
 export const secondDailyNotes = createSecondDailyNotesStore();
+
+/**
+ * Upsert one vault file into every enabled periodic-note store. Used by the
+ * plugin-level vault watcher, by startup creation/open, and by file-open, so
+ * a note created before a calendar view mounts is still indexed the moment it
+ * is observed. Returns true if any store changed.
+ */
+export function syncFileToStores(file: TFile): boolean {
+  const current = get(settings);
+  const changed = [
+    current.daily.enabled ? dailyNotes.addFile(file) : false,
+    current.weekly.enabled ? weeklyNotes.addFile(file) : false,
+    current.monthly.enabled ? monthlyNotes.addFile(file) : false,
+    current.quarterly.enabled ? quarterlyNotes.addFile(file) : false,
+    current.yearly.enabled ? yearlyNotes.addFile(file) : false,
+    current.secondDaily.enabled ? secondDailyNotes.addFile(file) : false,
+  ].some(Boolean);
+  return changed;
+}
 
 function createSelectedFileStore() {
   const store = writable<string | null>(null);

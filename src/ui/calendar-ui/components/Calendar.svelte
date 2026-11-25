@@ -54,7 +54,11 @@
     // so it is $bindable; its default references `today`, hence the ordering.
     today = moment(),
     displayedMonth = $bindable(today),
-    revision = 0,
+    // Explicit primitive props from the wrapper. Deriving the combined value
+    // here keeps $storeRevision a direct reactive dependency of every
+    // metadata promise instead of a lazily-initialised intermediate.
+    storeRevision = 0,
+    tickRevision = 0,
   }: {
     localeData: Locale;
     showWeekNums?: boolean;
@@ -82,8 +86,14 @@
     selectedSecondDailyId?: string | null;
     today?: Moment;
     displayedMonth?: Moment;
-    revision?: number;
+    storeRevision?: number;
+    tickRevision?: number;
   } = $props();
+
+  // Single source of truth for cell metadata re-derivation. Both props are
+  // first-class reactive values, so an increment after mount always produces
+  // a new promise for every already-mounted Day/WeekNum cell.
+  const revision = $derived(storeRevision + tickRevision);
 
   const isMobile = Platform.isMobile;
 
@@ -242,7 +252,7 @@
           {#if showWeekNums && !showWeekNumsRight}
             <WeekNum
               {...week}
-              metadata={getWeeklyMetadata(sources, week.days[0], today, revision)}
+              metadata={getWeeklyMetadata(sources, week.days[0], revision)}
               onClick={onClickWeek}
               onContextMenu={onContextMenuWeek}
               onHover={onHoverWeek}
@@ -259,7 +269,7 @@
               onClick={onClickDay}
               onContextMenu={onContextMenuDay}
               onHover={onHoverDay}
-              metadata={getDailyMetadata(sources, day, today, revision)}
+              metadata={getDailyMetadata(sources, day, revision)}
               {selectedId}
               {selectedSecondDailyId}
             />
@@ -267,7 +277,7 @@
           {#if showWeekNums && showWeekNumsRight}
             <WeekNum
               {...week}
-              metadata={getWeeklyMetadata(sources, week.days[0], today, revision)}
+              metadata={getWeeklyMetadata(sources, week.days[0], revision)}
               onClick={onClickWeek}
               onContextMenu={onContextMenuWeek}
               onHover={onHoverWeek}
@@ -300,7 +310,7 @@
           <WeekNum
             weekNum={weekData.num}
             days={weekData.days}
-            metadata={getWeeklyMetadata(sources, weekData.days[0], today, revision)}
+            metadata={getWeeklyMetadata(sources, weekData.days[0], revision)}
             onClick={onClickWeek}
             onContextMenu={onContextMenuWeek}
             onHover={onHoverWeek}
@@ -316,7 +326,7 @@
               onClick={onClickDay}
               onContextMenu={onContextMenuDay}
               onHover={onHoverDay}
-              metadata={getDailyMetadata(sources, day, today, revision)}
+              metadata={getDailyMetadata(sources, day, revision)}
               {selectedId}
               {selectedSecondDailyId}
             />

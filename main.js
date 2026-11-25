@@ -6422,13 +6422,24 @@ function createPeriodicNotesStore(periodicity) {
             if (!date)
                 return false;
             const uid = getDateUID(date, periodicity);
-            store.update((current) => (Object.assign(Object.assign({}, (current !== null && current !== void 0 ? current : {})), { [uid]: file })));
+            let changed = false;
+            store.update((current) => {
+                if ((current === null || current === void 0 ? void 0 : current[uid]) === file)
+                    return current;
+                changed = true;
+                // Always emit a new object reference so Svelte subscribers fire.
+                return Object.assign(Object.assign({}, (current !== null && current !== void 0 ? current : {})), { [uid]: file });
+            });
+            // Unconditional: a store write is a render signal even when the file
+            // reference happens to be unchanged (e.g. a post-mount rescan reuses
+            // the same TFile). The cell metadata sources are non-reactive.
             bumpStoreRevision();
-            return true;
+            return changed;
         }, 
         // Incremental remove for a single deleted file. Same guards as addFile.
         // Returns true if the UID was actually present in the store.
         removeFile: (file) => {
+            var _a;
             const currentSettings = get$1(settings);
             const periodSettings = currentSettings[periodicity];
             if (!periodSettings.enabled)
@@ -6436,26 +6447,43 @@ function createPeriodicNotesStore(periodicity) {
             if (!isFileInConfiguredFolder(file, periodSettings))
                 return false;
             const date = getDateFromFile(file, periodicity, periodSettings.format);
-            if (!date)
+            const uids = [];
+            if (date) {
+                uids.push(getDateUID(date, periodicity));
+            }
+            else {
+                // A deleted TFile can fail the normal parser (path detached, nested
+                // folder format changed mid-session). Fall back to a path scan so the
+                // stored UID is still cleared.
+                for (const [uid, stored] of Object.entries((_a = get$1(store)) !== null && _a !== void 0 ? _a : {})) {
+                    if (stored.path === file.path || stored.basename === file.basename) {
+                        uids.push(uid);
+                    }
+                }
+            }
+            if (!uids.length)
                 return false;
-            const uid = getDateUID(date, periodicity);
             let removed = false;
             store.update((current) => {
-                // Only remove if this exact file owns the UID — two files under a
-                // recursively-scanned folder can parse to the same date, and deleting
-                // one shouldn't drop the other's entry. Match by reference or path.
-                if (!current ||
-                    !current[uid] ||
-                    (current[uid] !== file && current[uid].path !== file.path)) {
+                if (!current)
                     return current;
+                let next = current;
+                for (const uid of uids) {
+                    const stored = current[uid];
+                    if (!stored)
+                        continue;
+                    // Only remove if this exact file owns the UID — two files under a
+                    // recursively-scanned folder can parse to the same date.
+                    if (stored !== file && stored.path !== file.path)
+                        continue;
+                    if (next === current)
+                        next = Object.assign({}, current);
+                    delete next[uid];
+                    removed = true;
                 }
-                removed = true;
-                const next = Object.assign({}, current);
-                delete next[uid];
                 return next;
             });
-            if (removed)
-                bumpStoreRevision();
+            bumpStoreRevision();
             return removed;
         }, 
         // Remove the entry that the old path mapped to, given the vault `rename`
@@ -6493,8 +6521,7 @@ function createPeriodicNotesStore(periodicity) {
                 delete next[uid];
                 return next;
             });
-            if (removed)
-                bumpStoreRevision();
+            bumpStoreRevision();
             return removed;
         } }, store);
 }
@@ -6541,34 +6568,58 @@ function createSecondDailyNotesStore() {
             if (!date)
                 return false;
             const uid = getDateUID(date, "daily");
-            store.update((current) => (Object.assign(Object.assign({}, (current !== null && current !== void 0 ? current : {})), { [uid]: file })));
+            let changed = false;
+            store.update((current) => {
+                if ((current === null || current === void 0 ? void 0 : current[uid]) === file)
+                    return current;
+                changed = true;
+                return Object.assign(Object.assign({}, (current !== null && current !== void 0 ? current : {})), { [uid]: file });
+            });
+            // Unconditional: a store write is a render signal even when the file
+            // reference happens to be unchanged (e.g. a post-mount rescan reuses
+            // the same TFile). The cell metadata sources are non-reactive.
             bumpStoreRevision();
-            return true;
+            return changed;
         }, removeFile: (file) => {
+            var _a;
             const { secondDaily } = get$1(settings);
             if (!secondDaily.enabled)
                 return false;
             if (!isFileInConfiguredFolder(file, secondDaily))
                 return false;
             const date = getDateFromFile(file, "daily", secondDaily.format);
-            if (!date)
+            const uids = [];
+            if (date) {
+                uids.push(getDateUID(date, "daily"));
+            }
+            else {
+                for (const [uid, stored] of Object.entries((_a = get$1(store)) !== null && _a !== void 0 ? _a : {})) {
+                    if (stored.path === file.path || stored.basename === file.basename) {
+                        uids.push(uid);
+                    }
+                }
+            }
+            if (!uids.length)
                 return false;
-            const uid = getDateUID(date, "daily");
             let removed = false;
             store.update((current) => {
-                // Only remove if this exact file owns the UID (see periodic store).
-                if (!current ||
-                    !current[uid] ||
-                    (current[uid] !== file && current[uid].path !== file.path)) {
+                if (!current)
                     return current;
+                let next = current;
+                for (const uid of uids) {
+                    const stored = current[uid];
+                    if (!stored)
+                        continue;
+                    if (stored !== file && stored.path !== file.path)
+                        continue;
+                    if (next === current)
+                        next = Object.assign({}, current);
+                    delete next[uid];
+                    removed = true;
                 }
-                removed = true;
-                const next = Object.assign({}, current);
-                delete next[uid];
                 return next;
             });
-            if (removed)
-                bumpStoreRevision();
+            bumpStoreRevision();
             return removed;
         }, removeByOldPath: (oldPath, file) => {
             const { secondDaily } = get$1(settings);
@@ -6599,12 +6650,29 @@ function createSecondDailyNotesStore() {
                 delete next[uid];
                 return next;
             });
-            if (removed)
-                bumpStoreRevision();
+            bumpStoreRevision();
             return removed;
         } }, store);
 }
 const secondDailyNotes = createSecondDailyNotesStore();
+/**
+ * Upsert one vault file into every enabled periodic-note store. Used by the
+ * plugin-level vault watcher, by startup creation/open, and by file-open, so
+ * a note created before a calendar view mounts is still indexed the moment it
+ * is observed. Returns true if any store changed.
+ */
+function syncFileToStores(file) {
+    const current = get$1(settings);
+    const changed = [
+        current.daily.enabled ? dailyNotes.addFile(file) : false,
+        current.weekly.enabled ? weeklyNotes.addFile(file) : false,
+        current.monthly.enabled ? monthlyNotes.addFile(file) : false,
+        current.quarterly.enabled ? quarterlyNotes.addFile(file) : false,
+        current.yearly.enabled ? yearlyNotes.addFile(file) : false,
+        current.secondDaily.enabled ? secondDailyNotes.addFile(file) : false,
+    ].some(Boolean);
+    return changed;
+}
 function createSelectedFileStore() {
     const store = writable(null);
     return Object.assign({ setFile: (file) => {
@@ -8208,27 +8276,6 @@ function link(state, prev, next) {
 	}
 }
 
-/** @import { Snippet } from 'svelte' */
-/** @import { TemplateNode } from '#client' */
-/** @import { Getters } from '#shared' */
-
-/**
- * @template {(node: TemplateNode, ...args: any[]) => void} SnippetFn
- * @param {TemplateNode} node
- * @param {() => SnippetFn | null | undefined} get_snippet
- * @param {(() => any)[]} args
- * @returns {void}
- */
-function snippet(node, get_snippet, ...args) {
-	var branches = new BranchManager(node);
-
-	block(() => {
-		const snippet = get_snippet() ?? null;
-
-		branches.ensure(snippet, snippet && ((anchor) => snippet(anchor, ...args)));
-	}, EFFECT_TRANSPARENT);
-}
-
 /**
  * @param {Node} anchor
  * @param {{ hash: string, code: string }} css
@@ -9043,6 +9090,81 @@ function get_setters(element) {
 	return setters;
 }
 
+/** @import { ComponentContext, Effect } from '#client' */
+
+/**
+ * @param {any} bound_value
+ * @param {Element} element_or_component
+ * @returns {boolean}
+ */
+function is_bound_this(bound_value, element_or_component) {
+	return (
+		bound_value === element_or_component || bound_value?.[STATE_SYMBOL] === element_or_component
+	);
+}
+
+/**
+ * @param {any} element_or_component
+ * @param {(value: unknown, ...parts: unknown[]) => void} update
+ * @param {(...parts: unknown[]) => unknown} get_value
+ * @param {() => unknown[]} [get_parts] Set if the this binding is used inside an each block,
+ * 										returns all the parts of the each block context that are used in the expression
+ * @returns {void}
+ */
+function bind_this(element_or_component = {}, update, get_value, get_parts) {
+	var component_effect = /** @type {ComponentContext} */ (component_context).r;
+	var parent = /** @type {Effect} */ (active_effect);
+
+	effect(() => {
+		/** @type {unknown[]} */
+		var old_parts;
+
+		/** @type {unknown[]} */
+		var parts;
+
+		render_effect(() => {
+			old_parts = parts;
+			// We only track changes to the parts, not the value itself to avoid unnecessary reruns.
+			parts = [];
+
+			untrack(() => {
+				if (!is_bound_this(get_value(...parts), element_or_component)) {
+					update(element_or_component, ...parts);
+					// If this is an effect rerun (cause: each block context changes), then nullify the binding at
+					// the previous position if it isn't already taken over by a different effect.
+					if (old_parts && is_bound_this(get_value(...old_parts), element_or_component)) {
+						update(null, ...old_parts);
+					}
+				}
+			});
+		});
+
+		return () => {
+			// When the bind:this effect is destroyed, we go up the effect parent chain until we find the last parent effect that is destroyed,
+			// or the effect containing the component bind:this is in (whichever comes first). That way we can time the nulling of the binding
+			// as close to user/developer expectation as possible.
+			// TODO Svelte 6: Decide if we want to keep this logic or just always null the binding in the component effect's teardown
+			// (which would be simpler, but less intuitive in some cases, and breaks the `ondestroy-before-cleanup` test)
+			let p = parent;
+			while (p !== component_effect && p.parent !== null && p.parent.f & DESTROYING) {
+				p = p.parent;
+			}
+			const teardown = () => {
+				if (parts && is_bound_this(get_value(...parts), element_or_component)) {
+					update(null, ...parts);
+				}
+			};
+			const original_teardown = p.teardown;
+			p.teardown = () => {
+				teardown();
+				original_teardown?.();
+			};
+		};
+	});
+
+	return element_or_component;
+}
+
 /** @import { Derived, Effect, Source } from './types.js' */
 
 /**
@@ -9401,91 +9523,33 @@ if (typeof window !== 'undefined') {
 	((window.__svelte ??= {}).v ??= new Set()).add(PUBLIC_VERSION);
 }
 
-var root$7 = from_svg(`<svg viewBox="0 0 6 6" xmlns="http://www.w3.org/2000/svg"><circle cx="3" cy="3" r="2"></circle></svg>`);
-
-const $$css$6 = {
-	hash: 'svelte-1taai4i',
-	code: '.dot.svelte-1taai4i,\r\n  .hollow.svelte-1taai4i {display:inline-block;height:6px;width:6px;margin:0 1px;}.filled.svelte-1taai4i {fill:var(--color-dot);}.hollow.svelte-1taai4i {fill:none;stroke:var(--color-dot);}'
-};
-
-function Dot($$anchor, $$props) {
-	append_styles$1($$anchor, $$css$6);
-
-	let className = prop($$props, 'className', 3, "");
-	var fragment = comment();
-	var node = first_child(fragment);
-
-	{
-		var consequent = ($$anchor) => {
-			var svg = root$7();
-
-			template_effect(() => set_class(svg, 0, `dot filled ${className()}`, 'svelte-1taai4i'));
-			append($$anchor, svg);
-		};
-
-		var alternate = ($$anchor) => {
-			var svg_1 = root$7();
-
-			template_effect(() => set_class(svg_1, 0, `hollow ${className()}`, 'svelte-1taai4i'));
-			append($$anchor, svg_1);
-		};
-
-		if_block(node, ($$render) => {
-			if ($$props.isFilled) $$render(consequent); else $$render(alternate, -1);
-		});
-	}
-
-	append($$anchor, fragment);
-}
-
-function MetadataResolver($$anchor, $$props) {
-	push($$props, true);
-
-	// When there's no metadata promise, hand the snippet an empty metadata
-	// object rather than null, so consumers always receive a non-null
-	// IDayMetadata.
-	const emptyMeta = { classes: [], dots: [], dataAttributes: {} };
-
-	// Resolve the metadata promise into reactive state and render it directly,
-	// rather than via `{#await}`. The parent produces a *new* metadata promise on
-	// every calendar tick (settings change, file event, sync, heartbeat, …), and
-	// `{#await}` tears down and recreates its rendered content each time it's
-	// handed a new promise. For feature-image cells that meant the background
-	// `<div>` was destroyed and recreated on every tick — forcing the browser to
-	// reload and recomposite the image, a major source of lag while typing or
-	// syncing with featured images enabled. Resolving into `$state` and rendering
-	// it once lets Svelte diff the cell's attributes in place: when the resolved
-	// values are unchanged (same dots, same image URL), the DOM — and the image —
-	// is left untouched. It also avoids the blank flash `{#await}` showed while a
-	// new promise was pending (the previous value stays until the next resolves).
-	let resolved = state(proxy(emptyMeta));
-
-	user_effect(() => {
-		const pending = $$props.metadata;
-
-		if (!pending) {
-			set(resolved, emptyMeta, true);
-
-			return;
-		}
-
-		let cancelled = false;
-
-		void pending.then((meta) => {
-			if (!cancelled) set(resolved, meta, true);
-		});
-
-		return () => {
-			cancelled = true;
-		};
-	});
-
-	var fragment = comment();
-	var node = first_child(fragment);
-
-	snippet(node, () => $$props.children, () => get(resolved));
-	append($$anchor, fragment);
-	pop();
+const SVG_NS = "http://www.w3.org/2000/svg";
+/**
+ * Deterministically replace a day/week cell's dots.
+ *
+ * Obsidian's Electron runtime can leave Svelte 5.56.3's compiled `{#each}`
+ * reconciler with a stale empty container while sibling attribute effects keep
+ * updating. Writing the SVGs directly keeps the dot state attached to the same
+ * state source as `has-note` without competing with the reconciler.
+ */
+function syncDotsDom(container, dots) {
+    if (!container)
+        return;
+    const frag = document.createDocumentFragment();
+    for (const dot of dots) {
+        const svg = document.createElementNS(SVG_NS, "svg");
+        const base = dot.isFilled ? "dot filled" : "hollow";
+        svg.setAttribute("class", dot.className ? `${base} ${dot.className}` : base);
+        svg.setAttribute("viewBox", "0 0 6 6");
+        svg.setAttribute("xmlns", SVG_NS);
+        const circle = document.createElementNS(SVG_NS, "circle");
+        circle.setAttribute("cx", "3");
+        circle.setAttribute("cy", "3");
+        circle.setAttribute("r", "2");
+        svg.appendChild(circle);
+        frag.appendChild(svg);
+    }
+    container.replaceChildren(frag);
 }
 
 function isMetaPressed(e) {
@@ -9557,17 +9621,16 @@ function getMonth(displayedMonth, ..._args) {
     return month;
 }
 
-var root$6 = from_html(`<div><div class="day-highlight svelte-x62535"><span class="day-number svelte-x62535"> </span> <div class="dot-container svelte-x62535"></div></div></div>`);
-var root_1$5 = from_html(`<td><!></td>`);
+var root$7 = from_html(`<td><div><div class="day-highlight svelte-x62535"><span class="day-number svelte-x62535"> </span> <div class="dot-container svelte-x62535"></div></div></div></td>`);
 
-const $$css$5 = {
+const $$css$6 = {
 	hash: 'svelte-x62535',
-	code: '.day.svelte-x62535 {background-color:var(--color-background-day);border-radius:4px;color:var(--color-text-day);cursor:pointer;font-size:0.8em;height:100%;\r\n    /* isolation: isolate creates a stacking context so ::before/::after\r\n       z-index values are resolved within .day, not the document root.\r\n       This lets z-index: 0 overlays sit above the background image but\r\n       below z-index: 1 text and dots. */isolation:isolate;padding:4px;position:relative;text-align:center;transition:background-color 0.1s ease-in, color 0.1s ease-in;vertical-align:baseline;}\r\n  /* Snug box that carries the today/selected highlight. The outer .day and\r\n     td stay full-size and clickable, so cell hit areas and weekend shading\r\n     do not change. */.day-highlight.svelte-x62535 {align-items:center;border:1px solid transparent;border-radius:6px;box-sizing:border-box;display:flex;flex-direction:column;margin:0 auto;min-height:34px;position:relative;width:32px;}.day.svelte-x62535:hover {background-color:var(--interactive-hover);}.day.active.svelte-x62535:hover {background-color:var(--interactive-accent-hover);}.adjacent-month.svelte-x62535 {opacity:0.25;}.today.svelte-x62535 {color:var(--color-text-today);}.day.svelte-x62535:active,\r\n  .day.active.svelte-x62535,\r\n  .day.active.today.svelte-x62535 {color:var(--text-on-accent);background-color:var(--interactive-accent);}\r\n\r\n  /* A secondary daily note is indicated by its dot only. The cell itself\r\n     keeps its normal background so it cannot alter Today\'s compact highlight\r\n     or the weekend column tint. */.day.second-daily-active.today.svelte-x62535 {color:var(--color-text-day);}\r\n\r\n  /* Featured image support ------------------------------------------------ */.day.has-background-image.svelte-x62535 {background-size:cover;background-position:center;overflow:hidden;}\r\n\r\n  /* Readability overlay: a dark gradient in front of the image so the date\r\n     number and dots are visible regardless of photo content. Kept heavy on\r\n     purpose — the goal is an at-a-glance "this day has an image" cue, not to\r\n     show photo detail. z-index: 0 sits above the background image but below\r\n     .day-number / .dot-container (z-index: 1 within the isolation context). */.day.has-background-image.svelte-x62535::before {content:\'\';position:absolute;inset:0;border-radius:4px;background:linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.35));pointer-events:none;transition:background 0.1s ease-in;z-index:0;}\r\n\r\n  /* Hover over an image cell: the base `.day:hover` background-color is hidden\r\n     behind the photo, so instead lighten the ::before overlay (the photo\r\n     appears to brighten). Keeping background-color stable (transparent) avoids\r\n     a repaint that re-composites the image on every hover — that was the\r\n     source of hover lag on image-heavy vaults. */.day.has-background-image.svelte-x62535:hover,\r\n  .day.has-background-image.active.svelte-x62535:hover {background-color:transparent;}.day.has-background-image.svelte-x62535:hover::before {background:linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));}\r\n\r\n  /* Active state over an image: suppress the solid accent background and\r\n     use a translucent accent overlay instead so the photo stays visible\r\n     underneath while the cell still reads as selected. */.day.has-background-image.active.svelte-x62535,\r\n  .day.has-background-image.active.today.svelte-x62535,\r\n  .day.has-background-image.svelte-x62535:active {background-color:transparent;}.day.has-background-image.active.svelte-x62535::after,\r\n  .day.has-background-image.active.today.svelte-x62535::after,\r\n  .day.has-background-image.svelte-x62535:active::after {content:\'\';position:absolute;inset:0;background-color:var(--interactive-accent);border-radius:4px;opacity:0.65;pointer-events:none;z-index:0;}\r\n\r\n  /* The number is wrapped in a span purely for z-index: it must sit above\r\n     both overlays within the isolation stacking context. No visual styling\r\n     here — color, weight, and the today/active rules all come from the\r\n     existing .day / .today / .day.active.today rules and inherit through the\r\n     span, so the number looks identical whether or not the cell has an image. */.day-number.svelte-x62535 {position:relative;z-index:1;}.dot-container.svelte-x62535 {display:flex;flex-wrap:wrap;justify-content:center;line-height:6px;min-height:6px;position:relative;z-index:1;}'
+	code: '.day.svelte-x62535 {background-color:var(--color-background-day);border-radius:4px;color:var(--color-text-day);cursor:pointer;font-size:0.8em;height:100%;\r\n    /* isolation: isolate creates a stacking context so ::before/::after\r\n       z-index values are resolved within .day, not the document root.\r\n       This lets z-index: 0 overlays sit above the background image but\r\n       below z-index: 1 text and dots. */isolation:isolate;padding:4px;position:relative;text-align:center;transition:background-color 0.1s ease-in, color 0.1s ease-in;vertical-align:baseline;}\r\n  /* Snug box that carries the today/selected highlight. The outer .day and\r\n     td stay full-size and clickable, so cell hit areas and weekend shading\r\n     do not change. */.day-highlight.svelte-x62535 {align-items:center;border:1px solid transparent;border-radius:6px;box-sizing:border-box;display:flex;flex-direction:column;margin:0 auto;min-height:34px;position:relative;width:32px;}.day.svelte-x62535:hover {background-color:var(--interactive-hover);}.day.active.svelte-x62535:hover {background-color:var(--interactive-accent-hover);}.adjacent-month.svelte-x62535 {opacity:0.25;}.today.svelte-x62535 {color:var(--color-text-today);}.day.svelte-x62535:active,\r\n  .day.active.svelte-x62535,\r\n  .day.active.today.svelte-x62535 {color:var(--text-on-accent);background-color:var(--interactive-accent);}\r\n\r\n  /* A secondary daily note is indicated by its dot only. The cell itself\r\n     keeps its normal background so it cannot alter Today\'s compact highlight\r\n     or the weekend column tint. */.day.second-daily-active.today.svelte-x62535 {color:var(--color-text-day);}\r\n\r\n  /* Featured image support ------------------------------------------------ */.day.has-background-image.svelte-x62535 {background-size:cover;background-position:center;overflow:hidden;}\r\n\r\n  /* Readability overlay: a dark gradient in front of the image so the date\r\n     number and dots are visible regardless of photo content. Kept heavy on\r\n     purpose — the goal is an at-a-glance "this day has an image" cue, not to\r\n     show photo detail. z-index: 0 sits above the background image but below\r\n     .day-number / .dot-container (z-index: 1 within the isolation context). */.day.has-background-image.svelte-x62535::before {content:\'\';position:absolute;inset:0;border-radius:4px;background:linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.35));pointer-events:none;transition:background 0.1s ease-in;z-index:0;}\r\n\r\n  /* Hover over an image cell: the base `.day:hover` background-color is hidden\r\n     behind the photo, so instead lighten the ::before overlay (the photo\r\n     appears to brighten). Keeping background-color stable (transparent) avoids\r\n     a repaint that re-composites the image on every hover — that was the\r\n     source of hover lag on image-heavy vaults. */.day.has-background-image.svelte-x62535:hover,\r\n  .day.has-background-image.active.svelte-x62535:hover {background-color:transparent;}.day.has-background-image.svelte-x62535:hover::before {background:linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));}\r\n\r\n  /* Active state over an image: suppress the solid accent background and\r\n     use a translucent accent overlay instead so the photo stays visible\r\n     underneath while the cell still reads as selected. */.day.has-background-image.active.svelte-x62535,\r\n  .day.has-background-image.active.today.svelte-x62535,\r\n  .day.has-background-image.svelte-x62535:active {background-color:transparent;}.day.has-background-image.active.svelte-x62535::after,\r\n  .day.has-background-image.active.today.svelte-x62535::after,\r\n  .day.has-background-image.svelte-x62535:active::after {content:\'\';position:absolute;inset:0;background-color:var(--interactive-accent);border-radius:4px;opacity:0.65;pointer-events:none;z-index:0;}\r\n\r\n  /* The number is wrapped in a span purely for z-index: it must sit above\r\n     both overlays within the isolation stacking context. No visual styling\r\n     here — color, weight, and the today/active rules all come from the\r\n     existing .day / .today / .day.active.today rules and inherit through the\r\n     span, so the number looks identical whether or not the cell has an image. */.day-number.svelte-x62535 {position:relative;z-index:1;}.dot-container.svelte-x62535 {display:flex;flex-wrap:wrap;justify-content:center;line-height:6px;min-height:6px;position:relative;z-index:1;}.dot-container.svelte-x62535 .dot,\r\n  .dot-container.svelte-x62535 .hollow {display:inline-block;height:6px;width:6px;margin:0 1px;}.dot-container.svelte-x62535 .filled {fill:var(--color-dot);}.dot-container.svelte-x62535 .hollow {fill:none;stroke:var(--color-dot);}'
 };
 
 function Day($$anchor, $$props) {
 	push($$props, true);
-	append_styles$1($$anchor, $$css$5);
+	append_styles$1($$anchor, $$css$6);
 
 	let // Properties
 		// Global state
@@ -9579,89 +9642,141 @@ function Day($$anchor, $$props) {
 	const isWeekendDay = user_derived(() => isWeekend($$props.date, weekendDays()));
 	const dailyUid = user_derived(() => getDateUID($$props.date, "daily"));
 	const isSecondDailyActive = user_derived(() => selectedSecondDailyId() === get(dailyUid));
-	var td = root_1$5();
-	let classes;
-	var node = child(td);
+	const isToday = user_derived(() => $$props.date.isSame($$props.today, "day"));
 
-	{
-		const children = ($$anchor, metadata = noop) => {
-			var div = root$6();
+	// Flat, independent state avoids the Svelte 5 snippet/proxy boundary that
+	// let `.dot-container` go stale while `has-note` updated.
+	let resolvedClasses = state(proxy([]));
 
-			attribute_effect(
-				div,
-				($0, $1) => ({
-					class: $0,
-					style: metadata().backgroundImage
-						? `background-image: url("${metadata().backgroundImage}")`
-						: "",
-					onclick: $$props.onClick && ((e) => $$props.onClick($$props.date, e)),
-					oncontextmenu: $$props.onContextMenu && ((e) => $$props.onContextMenu($$props.date, e)),
-					onpointerover: $$props.onHover && ((e) => $$props.onHover($$props.date, e.currentTarget, isMetaPressed(e))),
-					...metadata().dataAttributes || {},
-					[CLASS]: $1
-				}),
-				[
-					() => `day ${(metadata().classes ?? []).join(" ")}`,
-					() => ({
-						active: selectedId() === get(dailyUid) && !get(isSecondDailyActive),
-						'second-daily-active': get(isSecondDailyActive),
-						'adjacent-month': displayedMonth() && !$$props.date.isSame(displayedMonth(), "month"),
-						today: $$props.date.isSame($$props.today, "day"),
-						'has-background-image': !!metadata().backgroundImage
-					})
-				],
-				void 0,
-				void 0,
-				'svelte-x62535'
-			);
+	let resolvedDots = state(proxy([]));
+	let resolvedDataAttrs = state(proxy({}));
+	let resolvedBgImage = state(null);
+	let dotContainerEl = null;
 
-			var div_1 = child(div);
-			var span = child(div_1);
-			var text = child(span);
-
-			var div_2 = sibling(span, 2);
-
-			each(div_2, 21, () => metadata().dots ?? [], index, ($$anchor, dot) => {
-				Dot($$anchor, spread_props(() => get(dot)));
-			});
-
-			template_effect(
-				($0) => {
-					set_attribute(div_1, 'data-emoji-tag', metadata().dataAttributes?.["data-emoji-tag"] ?? undefined);
-					set_text(text, $0);
-				},
-				[() => $$props.date.format("D")]
-			);
-
-			append($$anchor, div);
-		};
-
-		MetadataResolver(node, {
-			get metadata() {
-				return $$props.metadata;
-			},
-			children,
-			$$slots: { default: true }
-		});
+	function clearResolved() {
+		set(resolvedClasses, [], true);
+		set(resolvedDots, [], true);
+		set(resolvedDataAttrs, {}, true);
+		set(resolvedBgImage, null);
+		syncDotsDom(dotContainerEl, []);
 	}
-	template_effect(() => classes = set_class(td, 1, '', null, classes, { weekend: get(isWeekendDay) }));
+
+	// Direct DOM ownership: no Svelte `{#each}` reconciler in .dot-container.
+	user_effect(() => {
+		syncDotsDom(dotContainerEl, get(resolvedDots));
+	});
+
+	user_effect(() => {
+		const pending = $$props.metadata;
+
+		if (!pending) {
+			clearResolved();
+
+			return;
+		}
+
+		let cancelled = false;
+
+		void pending.then((meta) => {
+			var _a, _b, _c, _d;
+
+			if (cancelled) return;
+
+			set(resolvedClasses, [...(_a = meta.classes) !== null && _a !== void 0 ? _a : []], true);
+
+			set(
+				resolvedDots,
+				((_b = meta.dots) !== null && _b !== void 0 ? _b : []).map((dot) => {
+					var _a;
+
+					return {
+						className: (_a = dot.className) !== null && _a !== void 0 ? _a : "",
+						isFilled: !!dot.isFilled
+					};
+				}),
+				true
+			);
+
+			set(resolvedDataAttrs, Object.assign({}, (_c = meta.dataAttributes) !== null && _c !== void 0 ? _c : {}), true);
+			set(resolvedBgImage, (_d = meta.backgroundImage) !== null && _d !== void 0 ? _d : null, true);
+			syncDotsDom(dotContainerEl, get(resolvedDots));
+		}).catch((err) => {
+			console.warn("[Cadence Calendar] day metadata rejected", err);
+
+			if (!cancelled) clearResolved();
+		});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	var td = root$7();
+	let classes;
+	var div = child(td);
+
+	attribute_effect(
+		div,
+		($0, $1) => ({
+			class: $0,
+			style: get(resolvedBgImage)
+				? `background-image: url("${get(resolvedBgImage)}")`
+				: "",
+			onclick: $$props.onClick && ((e) => $$props.onClick($$props.date, e)),
+			oncontextmenu: $$props.onContextMenu && ((e) => $$props.onContextMenu($$props.date, e)),
+			onpointerover: $$props.onHover && ((e) => $$props.onHover($$props.date, e.currentTarget, isMetaPressed(e))),
+			...get(resolvedDataAttrs),
+			[CLASS]: $1
+		}),
+		[
+			() => `day ${get(resolvedClasses).join(" ")}`,
+			() => ({
+				active: selectedId() === get(dailyUid) && !get(isSecondDailyActive),
+				'second-daily-active': get(isSecondDailyActive),
+				'adjacent-month': displayedMonth() && !$$props.date.isSame(displayedMonth(), "month"),
+				today: get(isToday),
+				'has-background-image': !!get(resolvedBgImage)
+			})
+		],
+		void 0,
+		void 0,
+		'svelte-x62535'
+	);
+
+	var div_1 = child(div);
+	var span = child(div_1);
+	var text = child(span);
+
+	var div_2 = sibling(span, 2);
+
+	bind_this(div_2, ($$value) => dotContainerEl = $$value, () => dotContainerEl);
+
+	template_effect(
+		($0) => {
+			classes = set_class(td, 1, '', null, classes, { weekend: get(isWeekendDay) });
+			set_attribute(div_1, 'data-emoji-tag', get(resolvedDataAttrs)["data-emoji-tag"] ?? undefined);
+			set_text(text, $0);
+		},
+		[() => $$props.date.format("D")]
+	);
+
 	append($$anchor, td);
 	pop();
 }
 
-var root$5 = from_html(`<div><svg focusable="false" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" class="svelte-5izuqg"><path fill="currentColor" d="M34.52 239.03L228.87 44.69c9.37-9.37 24.57-9.37 33.94 0l22.67 22.67c9.36 9.36 9.37 24.52.04 33.9L131.49 256l154.02 154.75c9.34 9.38 9.32 24.54-.04 33.9l-22.67 22.67c-9.37 9.37-24.57 9.37-33.94 0L34.52 272.97c-9.37-9.37-9.37-24.57 0-33.94z"></path></svg></div>`);
+var root$6 = from_html(`<div><svg focusable="false" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" class="svelte-5izuqg"><path fill="currentColor" d="M34.52 239.03L228.87 44.69c9.37-9.37 24.57-9.37 33.94 0l22.67 22.67c9.36 9.36 9.37 24.52.04 33.9L131.49 256l154.02 154.75c9.34 9.38 9.32 24.54-.04 33.9l-22.67 22.67c-9.37 9.37-24.57 9.37-33.94 0L34.52 272.97c-9.37-9.37-9.37-24.57 0-33.94z"></path></svg></div>`);
 
-const $$css$4 = {
+const $$css$5 = {
 	hash: 'svelte-5izuqg',
 	code: '.arrow.svelte-5izuqg {align-items:center;cursor:pointer;display:inline-flex;justify-content:center;line-height:1;width:24px;}.arrow.svelte-5izuqg:hover {opacity:0.7;}.arrow.is-mobile.svelte-5izuqg {width:32px;}.right.svelte-5izuqg {transform:rotate(180deg);}.arrow.svelte-5izuqg svg:where(.svelte-5izuqg) {color:var(--color-arrow);height:16px;width:16px;}'
 };
 
 function Arrow($$anchor, $$props) {
 	push($$props, true);
-	append_styles$1($$anchor, $$css$4);
+	append_styles$1($$anchor, $$css$5);
 
 	const isMobile = obsidian.Platform.isMobile;
-	var div = root$5();
+	var div = root$6();
 	let classes;
 
 	template_effect(() => classes = set_class(div, 1, 'arrow svelte-5izuqg', null, classes, { 'is-mobile': isMobile, right: $$props.direction === "right" }));
@@ -9676,8 +9791,8 @@ function Arrow($$anchor, $$props) {
 
 delegate(['click']);
 
-var root$4 = from_html(`<h3 class="title week-title svelte-hunw0s"><span class="month svelte-hunw0s"> </span><span class="year svelte-hunw0s"> </span></h3>`);
-var root_1$4 = from_html(`<h3 class="title svelte-hunw0s"><span class="month svelte-hunw0s"> </span><span class="year svelte-hunw0s"> </span></h3>`);
+var root$5 = from_html(`<h3 class="title week-title svelte-hunw0s"><span class="month svelte-hunw0s"> </span><span class="year svelte-hunw0s"> </span></h3>`);
+var root_1$3 = from_html(`<h3 class="title svelte-hunw0s"><span class="month svelte-hunw0s"> </span><span class="year svelte-hunw0s"> </span></h3>`);
 var root_2$1 = from_html(`<div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svelte-hunw0s"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg></div>`);
 var root_3$1 = from_html(`<div class="reset-button svelte-hunw0s"> </div>`);
 var root_4$1 = from_html(`<div><div class="week-sublabel svelte-hunw0s">This Week</div></div>`);
@@ -9686,14 +9801,14 @@ var root_6$1 = from_html(`<span> </span> <!>`, 1);
 var root_7$1 = from_html(`<div class="sub-header svelte-hunw0s"><div class="quarters svelte-hunw0s"></div></div>`);
 var root_8 = from_html(`<div class="calendar-header"><div><div class="title-container svelte-hunw0s"><!></div> <div class="right-nav svelte-hunw0s"><!> <div class="view-toggle svelte-hunw0s" role="group" aria-label="Calendar view"><button type="button" title="Month view">Mᴏ</button> <button type="button" title="Week view">Wᴋ</button></div> <!> <!> <!></div></div> <!></div>`);
 
-const $$css$3 = {
+const $$css$4 = {
 	hash: 'svelte-hunw0s',
 	code: '.nav.svelte-hunw0s {align-items:center;display:flex;gap:6px;justify-content:space-between;margin:0.6em 0 0;padding:0;width:100%;}.nav.is-mobile.svelte-hunw0s {\n    /* The container supplies the 10px inset for both views. */padding:0;}.title-container.svelte-hunw0s {align-items:center;display:flex;min-width:0;}.sub-header.svelte-hunw0s {margin:2px 0 8px;}.sub-header.hidden.svelte-hunw0s {display:none;}.title.svelte-hunw0s {color:var(--color-text-title);flex-shrink:0;font-size:1.5em;line-height:1.2;margin:0;white-space:nowrap;}.title.week-title.svelte-hunw0s {font-size:1.05rem;white-space:nowrap;}.is-mobile.svelte-hunw0s .title:where(.svelte-hunw0s) {font-size:1.3em;}.is-mobile.svelte-hunw0s .title.week-title:where(.svelte-hunw0s) {font-size:1.05rem;}.month.svelte-hunw0s {font-weight:500;text-transform:capitalize;cursor:pointer;}.year.svelte-hunw0s {color:var(--interactive-accent);cursor:pointer;}.quarters.svelte-hunw0s {display:flex;align-items:center;margin-top:0;\n    /* 2px optical nudge to the right — sits the cluster just inside the\n       month title\'s left edge instead of perfectly flush, which reads\n       better at this font size. Not restoring the old per-item margins\n       or container padding (those caused the larger 6px indent). */margin-left:2px;\n    /* gap replaces per-item horizontal margins + the container\'s side\n       padding. The previous setup gave Q1 a 4px margin-left plus 2px of\n       container padding-left, leaving the row visually indented relative\n       to the month title (which has margin: 0). Using gap puts the first\n       child flush at the container\'s left edge while preserving the same\n       6px spacing between adjacent items (was 4px quarter-margin + 2px\n       divider-margin = 6px between each quarter and its divider). */gap:6px;}.quarter.svelte-hunw0s {font-size:0.6em;color:var(--text-muted);cursor:pointer;}.quarter.active.svelte-hunw0s {color:var(--interactive-accent);font-weight:bold;\n    /* Background / pill defenses against theme overrides (e.g. Minimal)\n       live in styles.css with a `#calendar-container` ID prefix — Svelte\'s\n       component-scoped specificity (0,4,0) isn\'t enough to beat a theme\n       targeting generic `.active` with higher specificity. */}.divider.svelte-hunw0s {font-size:0.4em;color:var(--text-muted);}.right-nav.svelte-hunw0s {align-items:center;display:flex;flex-shrink:0;gap:4px;justify-content:flex-end;margin-left:0;}.reset-button.svelte-hunw0s {align-items:center;display:inline-flex;line-height:1;cursor:pointer;border-radius:4px;color:var(--text-muted);font-size:0.7em;font-weight:600;letter-spacing:1px;margin:0 2px;padding:0 2px;text-transform:uppercase;}.reset-button.svelte-hunw0s:hover {opacity:0.7;}.week-sublabel.svelte-hunw0s {color:var(--text-muted);cursor:default;font-size:0.7em;margin:0;padding-left:2px;}.view-toggle.svelte-hunw0s {align-items:center;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:999px;display:inline-flex;gap:1px;margin-right:2px;padding:2px;}.view-toggle.svelte-hunw0s button:where(.svelte-hunw0s) {background:transparent;border:0;border-radius:999px;box-shadow:none;color:var(--text-muted);cursor:pointer;font-size:10px;font-weight:600;height:auto;line-height:1.3;min-height:0;padding:1px 7px;}.view-toggle.svelte-hunw0s button:where(.svelte-hunw0s):hover {color:var(--text-normal);}.view-toggle.svelte-hunw0s button.active:where(.svelte-hunw0s) {background:var(--interactive-accent);color:var(--text-on-accent);margin:0;}.year-overview-toggle.svelte-hunw0s {align-items:center;cursor:pointer;display:flex;justify-content:center;width:24px;}.year-overview-toggle.svelte-hunw0s:hover {opacity:0.7;}.is-mobile.svelte-hunw0s .year-overview-toggle:where(.svelte-hunw0s) {width:32px;}\n\n  /* Light grey when off, brightening to the normal (white-ish) text color\n     when the panel is open, so the icon\'s state is legible without color. */.year-overview-toggle.svelte-hunw0s svg:where(.svelte-hunw0s) {color:var(--text-muted);height:15px;width:15px;}.year-overview-toggle.active.svelte-hunw0s svg:where(.svelte-hunw0s) {color:var(--text-normal);}'
 };
 
 function Nav($$anchor, $$props) {
 	push($$props, true);
-	append_styles$1($$anchor, $$css$3);
+	append_styles$1($$anchor, $$css$4);
 
 	let viewMode = prop($$props, 'viewMode', 3, "month"),
 		onToggleView = prop($$props, 'onToggleView', 3, undefined),
@@ -9768,7 +9883,7 @@ function Nav($$anchor, $$props) {
 
 	{
 		var consequent = ($$anchor) => {
-			var h3 = root$4();
+			var h3 = root$5();
 			var span = child(h3);
 			var text = child(span);
 
@@ -9784,7 +9899,7 @@ function Nav($$anchor, $$props) {
 		};
 
 		var alternate = ($$anchor) => {
-			var h3_1 = root_1$4();
+			var h3_1 = root_1$3();
 			var span_2 = child(h3_1);
 			var text_2 = child(span_2);
 
@@ -9963,17 +10078,16 @@ function Nav($$anchor, $$props) {
 
 delegate(['click']);
 
-var root$3 = from_html(`<div><span class="week-num-number svelte-18k3ixf"> </span> <div class="dot-container svelte-18k3ixf"></div></div>`);
-var root_1$3 = from_html(`<td><!></td>`);
+var root$4 = from_html(`<td><div><span class="week-num-number svelte-18k3ixf"> </span> <div class="dot-container svelte-18k3ixf"></div></div></td>`);
 
-const $$css$2 = {
+const $$css$3 = {
 	hash: 'svelte-18k3ixf',
-	code: 'td.grid-right.svelte-18k3ixf {border-right:1px solid var(--background-modifier-border);}.week-num.svelte-18k3ixf {background-color:var(--color-background-weeknum);border-radius:4px;color:var(--color-text-weeknum);cursor:pointer;font-size:0.8em;height:100%;isolation:isolate;padding:4px;position:relative;text-align:center;transition:background-color 0.1s ease-in,\r\n      color 0.1s ease-in;vertical-align:baseline;}.week-num.svelte-18k3ixf:hover {background-color:var(--interactive-hover);}.week-num.active.svelte-18k3ixf {color:var(--text-on-accent);background-color:var(--interactive-accent);}.week-num.active.svelte-18k3ixf:hover {background-color:var(--interactive-accent-hover);}\r\n\r\n  /* Featured image support ------------------------------------------------ */.week-num.has-background-image.svelte-18k3ixf {background-size:cover;background-position:center;overflow:hidden;}.week-num.has-background-image.svelte-18k3ixf::before {content:\'\';position:absolute;inset:0;border-radius:4px;background:linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.35));pointer-events:none;transition:background 0.1s ease-in;z-index:0;}\r\n\r\n  /* Hover over an image cell: lighten the ::before overlay (photo appears to\r\n     brighten) and keep background-color stable to avoid re-compositing the\r\n     image on hover. Mirrors Day.svelte. */.week-num.has-background-image.svelte-18k3ixf:hover,\r\n  .week-num.has-background-image.active.svelte-18k3ixf:hover {background-color:transparent;}.week-num.has-background-image.svelte-18k3ixf:hover::before {background:linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));}.week-num.has-background-image.active.svelte-18k3ixf {background-color:transparent;}.week-num.has-background-image.active.svelte-18k3ixf::after {content:\'\';position:absolute;inset:0;background-color:var(--interactive-accent);border-radius:4px;opacity:0.65;pointer-events:none;z-index:0;}\r\n\r\n  /* Wrapped purely for z-index (sits above the overlays). No visual styling\r\n     here — the number looks identical whether or not the cell has an image. */.week-num-number.svelte-18k3ixf {position:relative;z-index:1;}\r\n\r\n  /* Reserve consistent space so week numbers don\'t shift vertically when a\r\n     weekly-note dot appears or disappears. */.dot-container.svelte-18k3ixf {display:flex;flex-wrap:wrap;justify-content:center;min-height:6px;position:relative;z-index:1;}'
+	code: 'td.grid-right.svelte-18k3ixf {border-right:1px solid var(--background-modifier-border);}.week-num.svelte-18k3ixf {background-color:var(--color-background-weeknum);border-radius:4px;color:var(--color-text-weeknum);cursor:pointer;font-size:0.8em;height:100%;isolation:isolate;padding:4px;position:relative;text-align:center;transition:background-color 0.1s ease-in,\r\n      color 0.1s ease-in;vertical-align:baseline;}.week-num.svelte-18k3ixf:hover {background-color:var(--interactive-hover);}.week-num.active.svelte-18k3ixf {color:var(--text-on-accent);background-color:var(--interactive-accent);}.week-num.active.svelte-18k3ixf:hover {background-color:var(--interactive-accent-hover);}\r\n\r\n  /* Featured image support ------------------------------------------------ */.week-num.has-background-image.svelte-18k3ixf {background-size:cover;background-position:center;overflow:hidden;}.week-num.has-background-image.svelte-18k3ixf::before {content:\'\';position:absolute;inset:0;border-radius:4px;background:linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.35));pointer-events:none;transition:background 0.1s ease-in;z-index:0;}\r\n\r\n  /* Hover over an image cell: lighten the ::before overlay (photo appears to\r\n     brighten) and keep background-color stable to avoid re-compositing the\r\n     image on hover. Mirrors Day.svelte. */.week-num.has-background-image.svelte-18k3ixf:hover,\r\n  .week-num.has-background-image.active.svelte-18k3ixf:hover {background-color:transparent;}.week-num.has-background-image.svelte-18k3ixf:hover::before {background:linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));}.week-num.has-background-image.active.svelte-18k3ixf {background-color:transparent;}.week-num.has-background-image.active.svelte-18k3ixf::after {content:\'\';position:absolute;inset:0;background-color:var(--interactive-accent);border-radius:4px;opacity:0.65;pointer-events:none;z-index:0;}\r\n\r\n  /* Wrapped purely for z-index (sits above the overlays). No visual styling\r\n     here — the number looks identical whether or not the cell has an image. */.week-num-number.svelte-18k3ixf {position:relative;z-index:1;}\r\n\r\n  /* Reserve consistent space so week numbers don\'t shift vertically when a\r\n     weekly-note dot appears or disappears. */.dot-container.svelte-18k3ixf {display:flex;flex-wrap:wrap;justify-content:center;min-height:6px;position:relative;z-index:1;}.dot-container.svelte-18k3ixf .dot,\r\n  .dot-container.svelte-18k3ixf .hollow {display:inline-block;height:6px;width:6px;margin:0 1px;}.dot-container.svelte-18k3ixf .filled {fill:var(--color-dot);}.dot-container.svelte-18k3ixf .hollow {fill:none;stroke:var(--color-dot);}'
 };
 
 function WeekNum($$anchor, $$props) {
 	push($$props, true);
-	append_styles$1($$anchor, $$css$2);
+	append_styles$1($$anchor, $$css$3);
 
 	let // Properties
 	// Event handlers
@@ -9981,71 +10095,151 @@ function WeekNum($$anchor, $$props) {
 	selectedId = prop($$props, 'selectedId', 3, null);
 
 	const startOfWeek = user_derived(() => getStartOfWeek($$props.days));
-	var td = root_1$3();
-	let classes;
-	var node = child(td);
+	let resolvedClasses = state(proxy([]));
+	let resolvedDots = state(proxy([]));
+	let resolvedBgImage = state(null);
+	let dotContainerEl = null;
 
-	{
-		const children = ($$anchor, metadata = noop) => {
-			var div = root$3();
-			let classes_1;
-			var span = child(div);
-			var text = child(span);
+	function clearResolved() {
+		set(resolvedClasses, [], true);
+		set(resolvedDots, [], true);
+		set(resolvedBgImage, null);
+		syncDotsDom(dotContainerEl, []);
+	}
 
-			var div_1 = sibling(span, 2);
+	user_effect(() => {
+		syncDotsDom(dotContainerEl, get(resolvedDots));
+	});
 
-			each(div_1, 21, () => metadata().dots ?? [], index, ($$anchor, dot) => {
-				Dot($$anchor, spread_props(() => get(dot)));
-			});
+	user_effect(() => {
+		const pending = $$props.metadata;
 
-			template_effect(
-				($0, $1) => {
-					classes_1 = set_class(div, 1, $0, 'svelte-18k3ixf', classes_1, $1);
+		if (!pending) {
+			clearResolved();
 
-					set_style(div, metadata().backgroundImage
-						? `background-image: url("${metadata().backgroundImage}")`
-						: "");
+			return;
+		}
 
-					set_text(text, $$props.weekNum);
-				},
-				[
-					() => `week-num ${(metadata().classes ?? []).join(" ")}`,
-					() => ({
-						active: selectedId() === getDateUID($$props.days[0], "weekly"),
-						'has-background-image': !!metadata().backgroundImage
-					})
-				]
+		let cancelled = false;
+
+		void pending.then((meta) => {
+			var _a, _b, _c;
+
+			if (cancelled) return;
+
+			set(resolvedClasses, [...(_a = meta.classes) !== null && _a !== void 0 ? _a : []], true);
+
+			set(
+				resolvedDots,
+				((_b = meta.dots) !== null && _b !== void 0 ? _b : []).map((dot) => {
+					var _a;
+
+					return {
+						className: (_a = dot.className) !== null && _a !== void 0 ? _a : "",
+						isFilled: !!dot.isFilled
+					};
+				}),
+				true
 			);
 
-			delegated('click', div, function (...$$args) {
-				($$props.onClick && ((e) => $$props.onClick(get(startOfWeek), isMetaPressed(e))))?.apply(this, $$args);
-			});
+			set(resolvedBgImage, (_c = meta.backgroundImage) !== null && _c !== void 0 ? _c : null, true);
+			syncDotsDom(dotContainerEl, get(resolvedDots));
+		}).catch((err) => {
+			console.warn("[Cadence Calendar] week metadata rejected", err);
 
-			delegated('contextmenu', div, function (...$$args) {
-				($$props.onContextMenu && ((e) => $$props.onContextMenu($$props.days[0], e)))?.apply(this, $$args);
-			});
-
-			delegated('pointerover', div, function (...$$args) {
-				($$props.onHover && ((e) => $$props.onHover(get(startOfWeek), e.currentTarget, isMetaPressed(e))))?.apply(this, $$args);
-			});
-
-			append($$anchor, div);
-		};
-
-		MetadataResolver(node, {
-			get metadata() {
-				return $$props.metadata;
-			},
-			children,
-			$$slots: { default: true }
+			if (!cancelled) clearResolved();
 		});
-	}
-	template_effect(() => classes = set_class(td, 1, 'svelte-18k3ixf', null, classes, { 'grid-right': $$props.gridRight }));
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	var td = root$4();
+	let classes;
+	var div = child(td);
+	let classes_1;
+	var span = child(div);
+	var text = child(span);
+
+	var div_1 = sibling(span, 2);
+
+	bind_this(div_1, ($$value) => dotContainerEl = $$value, () => dotContainerEl);
+
+	template_effect(
+		($0, $1) => {
+			classes = set_class(td, 1, 'svelte-18k3ixf', null, classes, { 'grid-right': $$props.gridRight });
+			classes_1 = set_class(div, 1, $0, 'svelte-18k3ixf', classes_1, $1);
+
+			set_style(div, get(resolvedBgImage)
+				? `background-image: url("${get(resolvedBgImage)}")`
+				: "");
+
+			set_text(text, $$props.weekNum);
+		},
+		[
+			() => `week-num ${get(resolvedClasses).join(" ")}`,
+			() => ({
+				active: selectedId() === getDateUID($$props.days[0], "weekly"),
+				'has-background-image': !!get(resolvedBgImage)
+			})
+		]
+	);
+
+	delegated('click', div, function (...$$args) {
+		($$props.onClick && ((e) => $$props.onClick(get(startOfWeek), isMetaPressed(e))))?.apply(this, $$args);
+	});
+
+	delegated('contextmenu', div, function (...$$args) {
+		($$props.onContextMenu && ((e) => $$props.onContextMenu($$props.days[0], e)))?.apply(this, $$args);
+	});
+
+	delegated('pointerover', div, function (...$$args) {
+		($$props.onHover && ((e) => $$props.onHover(get(startOfWeek), e.currentTarget, isMetaPressed(e))))?.apply(this, $$args);
+	});
+
 	append($$anchor, td);
 	pop();
 }
 
 delegate(['click', 'contextmenu', 'pointerover']);
+
+var root$3 = from_svg(`<svg viewBox="0 0 6 6" xmlns="http://www.w3.org/2000/svg"><circle cx="3" cy="3" r="2"></circle></svg>`);
+
+const $$css$2 = {
+	hash: 'svelte-1taai4i',
+	code: '.dot.svelte-1taai4i,\r\n  .hollow.svelte-1taai4i {display:inline-block;height:6px;width:6px;margin:0 1px;}.filled.svelte-1taai4i {fill:var(--color-dot);}.hollow.svelte-1taai4i {fill:none;stroke:var(--color-dot);}'
+};
+
+function Dot($$anchor, $$props) {
+	append_styles$1($$anchor, $$css$2);
+
+	let className = prop($$props, 'className', 3, "");
+	var fragment = comment();
+	var node = first_child(fragment);
+
+	{
+		var consequent = ($$anchor) => {
+			var svg = root$3();
+
+			template_effect(() => set_class(svg, 0, `dot filled ${className()}`, 'svelte-1taai4i'));
+			append($$anchor, svg);
+		};
+
+		var alternate = ($$anchor) => {
+			var svg_1 = root$3();
+
+			template_effect(() => set_class(svg_1, 0, `hollow ${className()}`, 'svelte-1taai4i'));
+			append($$anchor, svg_1);
+		};
+
+		if_block(node, ($$render) => {
+			if ($$props.isFilled) $$render(consequent); else $$render(alternate, -1);
+		});
+	}
+
+	append($$anchor, fragment);
+}
 
 var root$2 = from_html(`<div><span class="month-label svelte-1jpeose"> </span> <div class="dot-container svelte-1jpeose"><!></div></div>`);
 var root_1$2 = from_html(`<div class="year-overview svelte-1jpeose"><div class="year-nav svelte-1jpeose"><!> <span class="year-label svelte-1jpeose"> </span> <!></div> <div class="months svelte-1jpeose"></div></div>`);
@@ -10143,7 +10337,7 @@ async function metadataReducer(promisedMetadata) {
     };
     // A single source that rejects (e.g. a failed cachedRead) must not reject the
     // whole cell's metadata — that would leave the cell's rendered state stale
-    // (MetadataResolver has no rejection path) and log an unhandled rejection.
+    // and log an unhandled rejection.
     // Treat a failed source as contributing nothing.
     const metas = await Promise.all(promisedMetadata.map((p) => p.catch(() => ({ dots: [], classes: [], dataAttributes: {} }))));
     return metas.reduce((acc, meta) => {
@@ -10157,11 +10351,30 @@ async function metadataReducer(promisedMetadata) {
         });
     }, initial);
 }
-function getDailyMetadata(sources, date, ..._args) {
-    return metadataReducer(sources.map((source) => { var _a, _b; return (_b = (_a = source.getDailyMetadata) === null || _a === void 0 ? void 0 : _a.call(source, date)) !== null && _b !== void 0 ? _b : Promise.resolve({}); }));
+// One bad source must never delay the primary dot. Sources read metadataCache
+// and vault files directly; a brand-new note can be uncached for a moment, and
+// a transient read error must not reject the whole cell's metadata promise.
+function callSource(source, kind, date, revision) {
+    var _a, _b;
+    try {
+        const result = kind === "daily"
+            ? (_a = source.getDailyMetadata) === null || _a === void 0 ? void 0 : _a.call(source, date, revision)
+            : (_b = source.getWeeklyMetadata) === null || _b === void 0 ? void 0 : _b.call(source, date, revision);
+        return Promise.resolve(result !== null && result !== void 0 ? result : {}).catch((err) => {
+            console.warn("[Cadence Calendar] source failed", kind, date.format(), err);
+            return {};
+        });
+    }
+    catch (err) {
+        console.warn("[Cadence Calendar] source failed", kind, date.format(), err);
+        return Promise.resolve({});
+    }
 }
-function getWeeklyMetadata(sources, date, ..._args) {
-    return metadataReducer(sources.map((source) => { var _a, _b; return (_b = (_a = source.getWeeklyMetadata) === null || _a === void 0 ? void 0 : _a.call(source, date)) !== null && _b !== void 0 ? _b : Promise.resolve({}); }));
+function getDailyMetadata(sources, date, revision = 0) {
+    return metadataReducer(sources.map((source) => callSource(source, "daily", date, revision)));
+}
+function getWeeklyMetadata(sources, date, revision = 0) {
+    return metadataReducer(sources.map((source) => callSource(source, "weekly", date, revision)));
 }
 
 var root$1 = from_html(`<div class="year-popup svelte-1cv5gx"><!></div>`);
@@ -10209,7 +10422,16 @@ function Calendar$1($$anchor, $$props) {
 		// so it is $bindable; its default references `today`, hence the ordering.
 		today = prop($$props, 'today', 19, moment),
 		displayedMonth = prop($$props, 'displayedMonth', 31, () => proxy(today())),
-		revision = prop($$props, 'revision', 3, 0);
+		// Explicit primitive props from the wrapper. Deriving the combined value
+		// here keeps $storeRevision a direct reactive dependency of every
+		// metadata promise instead of a lazily-initialised intermediate.
+		storeRevision = prop($$props, 'storeRevision', 3, 0),
+		tickRevision = prop($$props, 'tickRevision', 3, 0);
+
+	// Single source of truth for cell metadata re-derivation. Both props are
+	// first-class reactive values, so an increment after mount always produces
+	// a new promise for every already-mounted Day/WeekNum cell.
+	const revision = user_derived(() => storeRevision() + tickRevision());
 
 	const isMobile = obsidian.Platform.isMobile;
 
@@ -10510,7 +10732,7 @@ function Calendar$1($$anchor, $$props) {
 				{
 					var consequent_4 = ($$anchor) => {
 						{
-							let $0 = user_derived(() => getWeeklyMetadata(sources(), get(week).days[0], today(), revision()));
+							let $0 = user_derived(() => getWeeklyMetadata(sources(), get(week).days[0], get(revision)));
 							let $1 = user_derived(() => !showWeekNumsRight());
 
 							WeekNum($$anchor, spread_props(() => get(week), {
@@ -10550,7 +10772,7 @@ function Calendar$1($$anchor, $$props) {
 
 				each(node_10, 17, () => get(week).days, (day) => day.format(), ($$anchor, day) => {
 					{
-						let $0 = user_derived(() => getDailyMetadata(sources(), get(day), today(), revision()));
+						let $0 = user_derived(() => getDailyMetadata(sources(), get(day), get(revision)));
 
 						Day($$anchor, {
 							get date() {
@@ -10601,7 +10823,7 @@ function Calendar$1($$anchor, $$props) {
 				{
 					var consequent_5 = ($$anchor) => {
 						{
-							let $0 = user_derived(() => getWeeklyMetadata(sources(), get(week).days[0], today(), revision()));
+							let $0 = user_derived(() => getWeeklyMetadata(sources(), get(week).days[0], get(revision)));
 							let $1 = user_derived(() => !showWeekNumsRight());
 
 							WeekNum($$anchor, spread_props(() => get(week), {
@@ -10679,7 +10901,7 @@ function Calendar$1($$anchor, $$props) {
 			var node_14 = child(tr_3);
 
 			{
-				let $0 = user_derived(() => getWeeklyMetadata(sources(), get(weekData).days[0], today(), revision()));
+				let $0 = user_derived(() => getWeeklyMetadata(sources(), get(weekData).days[0], get(revision)));
 
 				WeekNum(node_14, {
 					get weekNum() {
@@ -10717,7 +10939,7 @@ function Calendar$1($$anchor, $$props) {
 
 			each(node_15, 17, () => get(weekData).days, (day) => day.format(), ($$anchor, day) => {
 				{
-					let $0 = user_derived(() => getDailyMetadata(sources(), get(day), today(), revision()));
+					let $0 = user_derived(() => getDailyMetadata(sources(), get(day), get(revision)));
 
 					Day($$anchor, {
 						get date() {
@@ -10815,13 +11037,13 @@ var root_1 = from_html(`<div><!> <!></div>`);
 function Calendar($$anchor, $$props) {
 	push($$props, true);
 
-	const $storeRevision = () => store_get(storeRevision, '$storeRevision', $$stores);
 	const $activeFile = () => store_get(activeFile, '$activeFile', $$stores);
 	const $settings = () => store_get(settings, '$settings', $$stores);
 	const $dailyNotes = () => store_get(dailyNotes, '$dailyNotes', $$stores);
 	const $secondDailyNotes = () => store_get(secondDailyNotes, '$secondDailyNotes', $$stores);
 	const $weeklyNotes = () => store_get(weeklyNotes, '$weeklyNotes', $$stores);
 	const $monthlyNotes = () => store_get(monthlyNotes, '$monthlyNotes', $$stores);
+	const $storeRevision = () => store_get(storeRevision, '$storeRevision', $$stores);
 	const $activeSecondDailyFile = () => store_get(activeSecondDailyFile, '$activeSecondDailyFile', $$stores);
 	const [$$stores, $$cleanup] = setup_stores();
 	let today = state(proxy(moment()));
@@ -10835,11 +11057,10 @@ function Calendar($$anchor, $$props) {
 	// `today` reactively.
 	let displayedMonth = state(proxy(moment()));
 
-	// Combined primitive revision counter: increments whenever any periodic-note
-	// store is mutated ($storeRevision) OR when an explicit calendar tick fires
-	// (e.g. frontmatter / metadata / thumbnail / day rollover).
-	const revision = user_derived(() => $storeRevision() + get(tickRevision));
-
+	// Both revision sources are passed down as first-class primitive props.
+	// A lazy $derived that adds them here can absorb a pre-first-read store bump
+	// into its initial value and emit no change to already-mounted day cells.
+	// CalendarBase derives the combined metadata revision from these props.
 	// Week View footer: prefer the active daily note's date; otherwise anchor to
 	// today. parseZone keeps the UID's original UTC offset so the store lookup
 	// matches the exact key written by getDateUID().
@@ -10917,6 +11138,11 @@ function Calendar($$anchor, $$props) {
 			mounted = true;
 			reindexChangedStores(s, null);
 			reindexedSettings = s;
+
+			// Guarantee a post-first-render signal. A store write that landed before
+			// the metadata derived was first read would otherwise be absorbed into
+			// its initial value, leaving mounted cells with a stale promise.
+			queueMicrotask(() => bumpStoreRevision());
 		} else {
 			debouncedReindex();
 		}
@@ -11078,8 +11304,12 @@ function Calendar($$anchor, $$props) {
 			return get(today);
 		},
 
-		get revision() {
-			return get(revision);
+		get storeRevision() {
+			return $storeRevision();
+		},
+
+		get tickRevision() {
+			return get(tickRevision);
 		},
 
 		get onHoverDay() {
@@ -11278,7 +11508,7 @@ const getNoteExistsDots = (file) => {
     return [{ isFilled: true }];
 };
 const streakSource = {
-    getDailyMetadata: async (date) => {
+    getDailyMetadata: async (date, revision) => {
         var _a;
         const file = getPeriodicNote(date, "daily", (_a = get$1(dailyNotes)) !== null && _a !== void 0 ? _a : {});
         return {
@@ -11841,26 +12071,16 @@ class CalendarView extends obsidian.ItemView {
         };
         this.onFileCreated = (file) => {
             var _a;
-            if (!this.app.workspace.layoutReady)
-                return;
             if (!(file instanceof obsidian.TFile))
                 return;
-            const changed = [
-                dailyNotes.addFile(file),
-                weeklyNotes.addFile(file),
-                monthlyNotes.addFile(file),
-                quarterlyNotes.addFile(file),
-                yearlyNotes.addFile(file),
-                secondDailyNotes.addFile(file),
-            ].some(Boolean);
-            if (changed) {
+            // Do not gate on layoutReady here. A note created during layout restore
+            // must still be indexed even if no calendar leaf is mounted yet.
+            if (syncFileToStores(file)) {
                 (_a = this.calendar) === null || _a === void 0 ? void 0 : _a.tick();
             }
         };
         this.onFileRenamed = (file, oldPath) => {
             var _a, _b;
-            if (!this.app.workspace.layoutReady)
-                return;
             if (!(file instanceof obsidian.TFile))
                 return;
             // A renamed image's thumbnail is keyed on the old path; drop it (the new
@@ -11888,14 +12108,7 @@ class CalendarView extends obsidian.ItemView {
                 yearlyNotes.removeByOldPath(oldPath, file),
                 secondDailyNotes.removeByOldPath(oldPath, file),
             ].some(Boolean);
-            const added = [
-                dailyNotes.addFile(file),
-                weeklyNotes.addFile(file),
-                monthlyNotes.addFile(file),
-                quarterlyNotes.addFile(file),
-                yearlyNotes.addFile(file),
-                secondDailyNotes.addFile(file),
-            ].some(Boolean);
+            const added = syncFileToStores(file);
             if (removed || added) {
                 this.updateActiveFile();
                 // A tracked note moved in/out of a configured folder — recompute dots.
@@ -11920,7 +12133,14 @@ class CalendarView extends obsidian.ItemView {
                 this.calendar.tick();
             }
         };
-        this.onFileOpen = (_file) => {
+        this.onFileOpen = (file) => {
+            var _a;
+            // Opening a note is a reliable signal even when the create event was
+            // missed during startup. Upsert it now so the primary dot appears without
+            // waiting for a reload/reindex.
+            if (file instanceof obsidian.TFile && syncFileToStores(file)) {
+                (_a = this.calendar) === null || _a === void 0 ? void 0 : _a.tick();
+            }
             if (this.app.workspace.layoutReady) {
                 this.updateActiveFile();
             }
@@ -12088,6 +12308,15 @@ class CalendarView extends obsidian.ItemView {
         return Promise.resolve();
     }
     async onOpen() {
+        var _a;
+        // Obsidian can re-open an existing leaf without calling onClose first.
+        // Mounting again would leave an orphaned Svelte tree behind, so tear down
+        // any previous mount before creating the view again.
+        if (this.calendar) {
+            void unmount(this.calendar);
+            this.calendar = null;
+            this.contentEl.replaceChildren();
+        }
         // Integration point: external plugins can listen for `cadence-calendar:open`
         // (TRIGGER_ON_OPEN) to feed in additional sources. wordCountSource and
         // tasksSource self-gate on `dotMode === "word-count-tasks"`, so they have
@@ -12135,7 +12364,20 @@ class CalendarView extends obsidian.ItemView {
         // reveals the calendar sidebar — common on mobile), without this the
         // active highlight stays missing until the user switches files.
         if (this.app.workspace.layoutReady) {
-            this.updateActiveFile();
+            // Guarantee a post-mount sync/tick: startup auto-create/open may have
+            // written the stores just before this view finished mounting.
+            const active = this.app.workspace.getActiveFile();
+            const todayUid = getDateUID(moment(), "daily");
+            const hadTodayInStore = Boolean((_a = get$1(dailyNotes)) === null || _a === void 0 ? void 0 : _a[todayUid]);
+            if (active instanceof obsidian.TFile &&
+                !hadTodayInStore &&
+                this.settings.daily.enabled &&
+                getDateFromFile(active, "daily", this.settings.daily.format)) {
+                syncFileToStores(active);
+                bumpStoreRevision();
+            }
+            this.onFileOpen(active);
+            window.setTimeout(() => { var _a; return (_a = this.calendar) === null || _a === void 0 ? void 0 : _a.tick(); }, 0);
         }
         // When a feature-image thumbnail finishes generating in the background,
         // re-tick so its cell re-resolves and the image appears. Registered per
@@ -12199,6 +12441,10 @@ class CalendarView extends obsidian.ItemView {
     refreshAfterStoreSync() {
         var _a;
         this.updateActiveFile();
+        // A store sync is a render signal in its own right: bump the revision so
+        // already-mounted cells re-run getDailyMetadata even if tick() coalesces
+        // with an earlier frame or the store write happened during mount.
+        bumpStoreRevision();
         (_a = this.calendar) === null || _a === void 0 ? void 0 : _a.tick();
     }
     // Update the active-file highlight stores. Deliberately does NOT tick the
@@ -12401,6 +12647,26 @@ class CalendarPlugin extends obsidian.Plugin {
                 this.refreshAllCalendarViews();
             }
         }));
+        // A full resolve pass is rare (startup / bulk index). Tag and featured
+        // image sources read metadataCache directly, so a view tick is enough;
+        // per-file changes are handled by the `changed` listener below.
+        this.registerEvent(this.app.metadataCache.on("resolved", () => {
+            this.refreshAllCalendarViews();
+        }));
+        this.registerEvent(this.app.metadataCache.on("changed", (file) => {
+            if (!(file instanceof obsidian.TFile))
+                return;
+            const matchedDaily = this.options.daily.enabled &&
+                getDateFromFile(file, "daily", this.options.daily.format);
+            const matchedWeekly = this.options.weekly.enabled &&
+                getDateFromFile(file, "weekly", this.options.weekly.format);
+            if (!matchedDaily && !matchedWeekly)
+                return;
+            if (syncFileToStores(file)) {
+                bumpStoreRevision();
+                this.refreshAllCalendarViews();
+            }
+        }));
         this.addRibbonIcon("calendar-days", "Open Cadence Calendar", () => {
             const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR);
             if (leaves.length) {
@@ -12450,22 +12716,13 @@ class CalendarPlugin extends obsidian.Plugin {
         this.addSettingTab(new CalendarSettingsTab(this.app, this));
         this.app.workspace.onLayoutReady(async () => {
             this.initLeaf();
+            // One initial full scan; creation/open paths sync their own files via
+            // vault events and syncFileToStores(), so no extra full rescans here.
             this.reindexAllStores();
             await this.ensureAutoCreatedNotes();
             // Must run AFTER auto-create so a note created at startup exists before opening.
             await this.openDailyNoteOnStartup();
             this.refreshAllCalendarViews();
-            // Catch-up reindex: another plugin (core Daily Notes, daily-note-automater,
-            // sync) can create a note in the first seconds after layout-ready, after
-            // the subscription above started but outside any single create tick we
-            // could reliably attribute. One deferred, idempotent full rescan closes
-            // every startup race without a timer loop.
-            window.setTimeout(() => {
-                if (this.app.workspace.layoutReady) {
-                    this.reindexAllStores();
-                    this.refreshAllCalendarViews();
-                }
-            }, 8000);
         });
     }
     onunload() {
@@ -12533,6 +12790,7 @@ class CalendarPlugin extends obsidian.Plugin {
                 }
             }
             if (anyChanged) {
+                this.reindexAllStores();
                 this.refreshAllCalendarViews();
             }
             if (notify) {
@@ -12588,6 +12846,10 @@ class CalendarPlugin extends obsidian.Plugin {
                 }
             }
         }
+        // The file may have been created/opened by this helper; make sure the
+        // note store and calendar are synced before returning.
+        this.reindexAllStores();
+        this.refreshAllCalendarViews();
         if (((_b = this.app.workspace.getActiveFile()) === null || _b === void 0 ? void 0 : _b.path) === file.path) {
             activeFile.setFile(file);
             return;
