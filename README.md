@@ -21,11 +21,19 @@ Settings are under **Settings → Cadence Calendar**. Each of the five periodic 
 
 > **Folder names in date formats.** Your Date format may contain `/` to sort notes into subfolders, but the **filename** (the part after the last `/`) must identify the period on its own — Cadence Calendar reads the date back from the filename, not the folders. For example, `YYYY/MM/YYYY-MM-DD` works; `YYYY/MM/DD` does not (year and month would live only in folders).
 
-## Install
+## Installation
 
-**From a GitHub release (typical):** download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/ms3056/cadence-calendar/releases), copy them into your vault at `<vault>/.obsidian/plugins/cadence-calendar/`, then enable **Cadence Calendar** from Settings → Community plugins.
+### Install with BRAT (recommended)
 
-**With BRAT:** add `https://github.com/ms3056/cadence-calendar` to the [BRAT plugin](https://obsidian.md/plugins?id=obsidian42-brat) and enable it.
+1. Install and enable **BRAT** (`Obsidian42 - BRAT`) from **Settings → Community plugins → Browse**.
+2. Open the Command Palette (`Cmd/Ctrl + P`) and run **BRAT: Add a beta plugin for testing**.
+3. Paste `https://github.com/ms3056/cadence-calendar`.
+4. Leave the version on **Latest version** and click **Add Plugin**.
+5. Go to **Settings → Community plugins**, refresh if needed, and enable **Cadence Calendar**.
+
+### Manual installation
+
+Download `main.js`, `manifest.json`, and `styles.css` from the [latest GitHub release](https://github.com/ms3056/cadence-calendar/releases), copy them into `<vault>/.obsidian/plugins/cadence-calendar/`, then enable **Cadence Calendar** from Settings → Community plugins.
 
 Cadence Calendar uses its own plugin id (`cadence-calendar`), view type, and ribbon icon, so it can coexist with the original Calendar plugin or Calendar Plus during a transition.
 
